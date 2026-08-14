@@ -83,7 +83,7 @@ def save_digital_twin_states(athlete_id, upload_id, df):
                 readiness_trend,
                 fatigue_trend,
                 trend_summary,
-                bayesian_fatigue_probability
+                bayesian_fatigue_probability,
                 prediction_confidence,
                 digital_twin_state,
                 user_status_message
