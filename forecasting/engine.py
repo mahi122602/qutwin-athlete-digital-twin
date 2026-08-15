@@ -765,11 +765,11 @@ def build_forecast_bundle(
             "health_index",
             "injury_risk_score",
         )
-        if target in daily.columns and daily[target].notna().sum() >= 2
+        if target in daily.columns and daily[target].notna().sum() >= 1
     ]
 
     if "fatigue_score" not in target_names:
-        raise ValueError("At least two fatigue_score observations are required.")
+        raise ValueError("No usable fatigue_score observation is available.")
 
     forecasts: dict[str, TargetForecast] = {}
     evaluation_frames: list[pd.DataFrame] = []

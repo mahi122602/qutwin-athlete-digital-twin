@@ -497,8 +497,16 @@ def athlete_forecasting() -> None:
         return
 
     female_path = gender == "Female"
+    male_path = gender == "Male"
+    if female_path:
+        pathway_name = "Menstrual-aware female athlete"
+    elif male_path:
+        pathway_name = "Male athlete"
+    else:
+        pathway_name = "General athlete"
+
     st.info(
-        f"Forecasting pathway: **{'Menstrual-aware' if female_path else 'General athlete'}** "
+        f"Forecasting pathway: **{pathway_name}** "
         f"— profile gender: **{gender}**"
     )
 
@@ -593,7 +601,13 @@ def athlete_forecasting() -> None:
         try:
             run_id = save_forecast_run(
                 athlete_id=str(athlete_id),
-                gender_path="menstrual-aware" if female_path else "general",
+                gender_path=(
+                    "menstrual-aware"
+                    if female_path
+                    else "male"
+                    if male_path
+                    else "general"
+                    ),
                 validation_score=bundle.overall_validation_score,
                 forecast_df=bundle.table,
                 evaluation_df=bundle.evaluation,
