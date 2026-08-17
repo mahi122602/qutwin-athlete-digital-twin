@@ -307,14 +307,8 @@ if not st.session_state.logged_in:
 # ---------------------------------------------------------
 else:
     if st.session_state.role == "Athlete":
-        # Athlete uses the card-based gallery instead of sidebar.
-        if st.session_state.current_page == "Digital Twin Dashboard":
-            # Handles older login logic that still sends the athlete
-            # directly to the dashboard.
-            st.session_state.current_page = "Athlete Home"
-
         athlete_navigation()
-
+        
     elif st.session_state.role == "Coach":
         # Coach continues using sidebar navigation.
         show_coach_sidebar()
