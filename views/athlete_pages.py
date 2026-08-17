@@ -181,26 +181,73 @@ def athlete_dashboard():
     st.success("Latest AI Recommendation")
     st.info(latest.get("recommendation", "No recommendation available."))
 
-    if st.button("Upload New Garmin Data"):
+    if st.button("Upload New Athlete Data"):
         st.session_state.current_page = "Upload Garmin Data"
         st.rerun()
 
 
 def upload_garmin_data():
-    st.title("Upload Garmin Data")
+    st.title("Upload Athlete Data")
+    st.caption(
+        "Upload exported athlete data from Garmin, Samsung Health, Strava, "
+        "Fitbit, Apple Health, Polar, WHOOP, COROS, or another supported source."
+        )
 
     uploaded_file = st.file_uploader(
-        "Upload Garmin ZIP, Garmin CSV, Excel file, or FIT file",
-        type=["zip", "csv", "xlsx", "xls", "fit"],
+        "Upload athlete health, wearable, or activity data",
+        type=[
+        "zip",
+        "csv",
+        "xlsx",
+        "xls",
+        "fit",
+        "tcx",
+        "gpx",
+        "xml",
+        "json",
+        ],
     )
 
     if uploaded_file is None:
-        st.info("Upload Garmin data to generate a new Digital Twin state.")
+        st.info(
+            "Upload athlete data to generate a new Digital Twin state."
+            )
         return
 
     try:
-        model_ready_df, raw_preview, detected_type = load_uploaded_file(uploaded_file)
-        st.success(f"Detected file type: {detected_type}")
+        model_ready_df, raw_preview, detection = load_uploaded_file(uploaded_file)
+
+        detected_source = detection.get("source", "Unknown")
+        detected_file_type = detection.get("file_type", "unknown").upper()
+        detected_category = detection.get("category", "Unknown")
+        detection_confidence = detection.get("confidence", "Low")
+        original_device = detection.get("original_device_source")
+
+        st.success("File detected successfully.")
+        col1, col2, col3, col4 = st.columns(4)
+
+        col1.metric(
+            "Source",
+            detected_source,
+            )
+
+        col2.metric(
+            "File type",
+            detected_file_type,
+            )
+        col3.metric(
+            "Data category",
+            detected_category,
+            )
+        col4.metric(
+            "Detection confidence",
+            detection_confidence,
+            )
+        if original_device:
+            st.caption(
+                f"Original device/source detected: **{original_device}**"
+                )
+        detected_type = f"{detected_source} {detected_file_type}"
 
         if model_ready_df is None or model_ready_df.empty:
             st.warning("No model-ready features could be extracted from this file.")
