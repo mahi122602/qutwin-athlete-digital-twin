@@ -369,15 +369,152 @@ def athlete_predictions():
 def athlete_history():
     st.title("Digital Twin History")
 
-    history_df = get_athlete_twin_history(st.session_state.user_id)
+    history_df = get_athlete_twin_history(
+        st.session_state.user_id
+    )
 
     if history_df is None or history_df.empty:
         st.info("No Digital Twin history available yet.")
         return
 
-    st.dataframe(history_df, use_container_width=True)
+    # ---------------------------------------------------------
+    # Athlete-friendly columns only
+    # ---------------------------------------------------------
+    preferred_columns = [
+        "timestamp",
+        "heart_rate",
+        "sleep_hours",
+        "training_load",
+        "recovery_time",
+        "fatigue_score",
+        "readiness_score",
+        "injury_risk",
+        "athlete_state",
+        "twin_score",
+        "health_index",
+        "recommendation",
+    ]
 
-    csv = history_df.to_csv(index=False).encode("utf-8")
+    available_columns = [
+        column
+        for column in preferred_columns
+        if column in history_df.columns
+    ]
+
+    display_df = history_df[
+        available_columns
+    ].copy()
+
+    # ---------------------------------------------------------
+    # Format values
+    # ---------------------------------------------------------
+    if "timestamp" in display_df.columns:
+        display_df["timestamp"] = pd.to_datetime(
+            display_df["timestamp"],
+            errors="coerce",
+        )
+
+    numeric_columns = [
+        "heart_rate",
+        "sleep_hours",
+        "training_load",
+        "recovery_time",
+        "fatigue_score",
+        "readiness_score",
+        "twin_score",
+        "health_index",
+    ]
+
+    for column in numeric_columns:
+        if column in display_df.columns:
+            display_df[column] = pd.to_numeric(
+                display_df[column],
+                errors="coerce",
+            ).round(1)
+
+    # ---------------------------------------------------------
+    # User-friendly names
+    # ---------------------------------------------------------
+    display_df = display_df.rename(
+        columns={
+            "timestamp": "Date / Time",
+            "heart_rate": "Heart Rate",
+            "sleep_hours": "Sleep Hours",
+            "training_load": "Training Load",
+            "recovery_time": "Recovery Time",
+            "fatigue_score": "Fatigue",
+            "readiness_score": "Readiness",
+            "injury_risk": "Injury Risk",
+            "athlete_state": "Athlete State",
+            "twin_score": "Twin Score",
+            "health_index": "Health Index",
+            "recommendation": "Recommendation",
+        }
+    )
+
+    st.caption(
+        "Your most important health, recovery, training, "
+        "and Digital Twin results over time."
+    )
+
+    # ---------------------------------------------------------
+    # Display clean athlete history
+    # ---------------------------------------------------------
+    st.dataframe(
+        display_df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Date / Time": st.column_config.DatetimeColumn(
+                "Date / Time",
+                format="DD MMM YYYY, HH:mm",
+            ),
+            "Heart Rate": st.column_config.NumberColumn(
+                "Heart Rate",
+                format="%.0f bpm",
+            ),
+            "Sleep Hours": st.column_config.NumberColumn(
+                "Sleep Hours",
+                format="%.1f h",
+            ),
+            "Training Load": st.column_config.NumberColumn(
+                "Training Load",
+                format="%.1f",
+            ),
+            "Recovery Time": st.column_config.NumberColumn(
+                "Recovery Time",
+                format="%.1f h",
+            ),
+            "Fatigue": st.column_config.NumberColumn(
+                "Fatigue",
+                format="%.1f",
+            ),
+            "Readiness": st.column_config.NumberColumn(
+                "Readiness",
+                format="%.1f",
+            ),
+            "Twin Score": st.column_config.NumberColumn(
+                "Twin Score",
+                format="%.1f",
+            ),
+            "Health Index": st.column_config.NumberColumn(
+                "Health Index",
+                format="%.1f",
+            ),
+            "Recommendation": st.column_config.TextColumn(
+                "Recommendation",
+                width="large",
+            ),
+        },
+    )
+
+    # ---------------------------------------------------------
+    # Download only athlete-friendly history
+    # ---------------------------------------------------------
+    csv = display_df.to_csv(
+        index=False
+    ).encode("utf-8")
+
     st.download_button(
         "Download History CSV",
         csv,
