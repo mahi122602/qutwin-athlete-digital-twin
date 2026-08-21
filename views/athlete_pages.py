@@ -25,7 +25,15 @@ from database.athlete_repository import (
     get_athlete_profile,
     update_athlete_profile,
 )
-
+from database.connection_request_repository import (
+    get_incoming_connection_requests,
+    get_notifications,
+    get_unread_notification_count,
+    mark_all_notifications_read,
+    respond_to_connection_request,
+    send_connection_request,
+    get_sent_connection_requests,
+)
 
 def athlete_profile():
     st.title("Athlete Profile")
@@ -157,11 +165,230 @@ def athlete_profile():
             st.error("The profile could not be updated.")
             st.exception(exc)
 
+def _render_athlete_notification_bell():
+    athlete_id = str(st.session_state.user_id)
 
+    try:
+        unread_count = get_unread_notification_count(
+            "Athlete",
+            athlete_id,
+        )
+
+        incoming_requests = get_incoming_connection_requests(
+            "Athlete",
+            athlete_id,
+        )
+
+        notifications = get_notifications(
+            "Athlete",
+            athlete_id,
+            limit=20,
+        )
+
+    except Exception as exc:
+        st.error(
+            f"Notifications could not be loaded: {exc}"
+        )
+        return
+
+    bell_label = (
+        f"🔔 {unread_count}"
+        if unread_count > 0
+        else "🔔"
+    )
+
+    with st.popover(
+        bell_label,
+        use_container_width=True,
+    ):
+        st.markdown("### Notifications")
+
+        # =====================================================
+        # INCOMING COACH REQUESTS
+        # =====================================================
+        st.markdown("#### Connection Requests")
+
+        if incoming_requests:
+
+            for request in incoming_requests:
+
+                request_id = request["request_id"]
+                coach_id = request["sender_id"]
+                coach_name = request.get(
+                    "sender_name"
+                ) or "Coach"
+
+                request_message = (
+                    request.get("message")
+                    or "No message provided."
+                )
+
+                created_at = request.get(
+                    "created_at"
+                )
+
+                with st.container(border=True):
+
+                    st.markdown(
+                        f"**{coach_name}**"
+                    )
+
+                    st.caption(
+                        f"Coach ID: {coach_id}"
+                    )
+
+                    st.write(
+                        request_message
+                    )
+
+                    if created_at:
+                        st.caption(
+                            f"Sent: {created_at:%d %b %Y, %H:%M}"
+                        )
+
+                    accept_col, reject_col = st.columns(2)
+
+                    with accept_col:
+                        if st.button(
+                            "Accept",
+                            key=f"athlete_accept_request_{request_id}",
+                            type="primary",
+                            use_container_width=True,
+                        ):
+                            try:
+                                respond_to_connection_request(
+                                    request_id=request_id,
+                                    responder_role="Athlete",
+                                    responder_id=athlete_id,
+                                    decision="Accepted",
+                                )
+
+                            except Exception as exc:
+                                st.error(
+                                    f"Request could not be accepted: {exc}"
+                                )
+
+                            else:
+                                st.success(
+                                    f"Coach {coach_id} is now connected."
+                                )
+                                st.rerun()
+
+                    with reject_col:
+                        if st.button(
+                            "Reject",
+                            key=f"athlete_reject_request_{request_id}",
+                            use_container_width=True,
+                        ):
+                            try:
+                                respond_to_connection_request(
+                                    request_id=request_id,
+                                    responder_role="Athlete",
+                                    responder_id=athlete_id,
+                                    decision="Rejected",
+                                )
+
+                            except Exception as exc:
+                                st.error(
+                                    f"Request could not be rejected: {exc}"
+                                )
+
+                            else:
+                                st.info(
+                                    "Connection request rejected."
+                                )
+                                st.rerun()
+
+        else:
+            st.caption(
+                "No pending connection requests."
+            )
+
+        # =====================================================
+        # STATUS UPDATES
+        # =====================================================
+        st.divider()
+        st.markdown("#### Request Updates")
+
+        status_notifications = [
+            notification
+            for notification in notifications
+            if notification.get("notification_type")
+            in {
+                "Request Accepted",
+                "Request Rejected",
+            }
+        ]
+
+        if status_notifications:
+
+            for notification in status_notifications:
+
+                is_read = notification.get(
+                    "is_read",
+                    False,
+                )
+
+                marker = "●" if not is_read else "○"
+
+                st.markdown(
+                    f"{marker} {notification['message']}"
+                )
+
+                created_at = notification.get(
+                    "created_at"
+                )
+
+                if created_at:
+                    st.caption(
+                        f"{created_at:%d %b %Y, %H:%M}"
+                    )
+
+        else:
+            st.caption(
+                "No request updates yet."
+            )
+
+        # =====================================================
+        # MARK READ
+        # =====================================================
+        if unread_count > 0:
+
+            st.divider()
+
+            if st.button(
+                "Mark all as read",
+                key="athlete_mark_all_notifications_read",
+                use_container_width=True,
+            ):
+                try:
+                    mark_all_notifications_read(
+                        "Athlete",
+                        athlete_id,
+                    )
+
+                except Exception as exc:
+                    st.error(
+                        f"Notifications could not be updated: {exc}"
+                    )
+
+                else:
+                    st.rerun()
 def athlete_dashboard():
-    st.title("Digital Twin Dashboard")
 
-    history_df = get_athlete_twin_history(st.session_state.user_id)
+    title_col, bell_col = st.columns(
+        [8, 1]
+    )
+
+    with title_col:
+        st.title("Digital Twin Dashboard")
+
+    with bell_col:
+        _render_athlete_notification_bell()
+
+    history_df = get_athlete_twin_history(
+        st.session_state.user_id
+    )
 
     if history_df is None or history_df.empty:
         st.info("No Digital Twin state available yet.")
@@ -182,19 +409,171 @@ def athlete_dashboard():
     c4.metric("Twin Score", latest.get("twin_score", "N/A"))
 
     st.success("Latest AI Recommendation")
-    st.info(latest.get("recommendation", "No recommendation available."))
+    st.info(
+        latest.get(
+            "recommendation",
+            "No recommendation available.",
+            )
+    )
 
+# ============================================================
+# AI PREDICTION CARDS
+# ============================================================
+    
     if st.button("Upload New Athlete Data"):
         st.session_state.current_page = "Upload Garmin Data"
         st.rerun()
 
+
+def _render_athlete_coach_request_panel():
+    athlete_id = str(st.session_state.user_id)
+
+    st.subheader("Connect with a Coach")
+    st.caption(
+        "Send a connection request using the coach's ID."
+    )
+
+    with st.form(
+        "athlete_coach_connection_form",
+        clear_on_submit=True,
+    ):
+        coach_id = st.text_input(
+            "Coach ID",
+            placeholder="Enter Coach ID",
+        )
+
+        message = st.text_area(
+            "Message",
+            placeholder="Add an optional message for the coach...",
+            max_chars=1000,
+        )
+
+        send_request = st.form_submit_button(
+            "Send Request",
+            type="primary",
+            use_container_width=True,
+        )
+
+    if send_request:
+        coach_id = coach_id.strip()
+
+        if not coach_id:
+            st.warning("Please enter a Coach ID.")
+
+        else:
+            try:
+                request_id = send_connection_request(
+                    sender_role="Athlete",
+                    sender_id=athlete_id,
+                    recipient_id=coach_id,
+                    message=message,
+                )
+
+            except ValueError as exc:
+                st.warning(str(exc))
+
+            except Exception as exc:
+                st.error(
+                    f"Connection request could not be sent: {exc}"
+                )
+
+            else:
+                st.success(
+                    f"Connection request sent to Coach {coach_id}."
+                )
+                st.caption(
+                    f"Request ID: {request_id}"
+                )
+
+    # ========================================================
+    # SENT REQUESTS
+    # ========================================================
+    try:
+        sent_requests = get_sent_connection_requests(
+            "Athlete",
+            athlete_id,
+        )
+
+    except Exception as exc:
+        st.error(
+            f"Sent requests could not be loaded: {exc}"
+        )
+        return
+
+    if sent_requests:
+        with st.expander(
+            f"Sent Coach Requests ({len(sent_requests)})"
+        ):
+            for request in sent_requests:
+
+                coach_name = (
+                    request.get("recipient_name")
+                    or "Coach"
+                )
+
+                coach_id = request.get(
+                    "recipient_id"
+                )
+
+                status = request.get(
+                    "status",
+                    "Pending",
+                )
+
+                message = (
+                    request.get("message")
+                    or "No message provided."
+                )
+
+                created_at = request.get(
+                    "created_at"
+                )
+
+                if status == "Accepted":
+                    status_icon = "✅"
+                elif status == "Rejected":
+                    status_icon = "❌"
+                else:
+                    status_icon = "🕒"
+
+                with st.container(border=True):
+
+                    name_col, status_col = st.columns(
+                        [3, 1]
+                    )
+
+                    with name_col:
+                        st.markdown(
+                            f"**{coach_name}**"
+                        )
+                        st.caption(
+                            f"Coach ID: {coach_id}"
+                        )
+
+                    with status_col:
+                        st.markdown(
+                            f"{status_icon} **{status}**"
+                        )
+
+                    st.write(message)
+
+                    if created_at:
+                        st.caption(
+                            f"Sent: {created_at:%d %b %Y, %H:%M}"
+                        )
 
 def upload_garmin_data():
     st.title("Upload Athlete Data")
     st.caption(
         "Upload exported athlete data from Garmin, Samsung Health, Strava, "
         "Fitbit, Apple Health, Polar, WHOOP, COROS, or another supported source."
-        )
+    )
+
+    _render_athlete_coach_request_panel()
+
+    st.divider()
+
+    st.subheader("Upload Health & Activity Data")
 
     uploaded_file = st.file_uploader(
         "Upload athlete health, wearable, or activity data",
