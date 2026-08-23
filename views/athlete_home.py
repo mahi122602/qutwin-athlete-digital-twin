@@ -349,7 +349,8 @@ def _render_athlete_top_navigation(
 .st-key-top_nav_timeline button,
 .st-key-top_nav_visualisation button,
 .st-key-top_nav_simulation button,
-.st-key-top_nav_forecasting button {{
+.st-key-top_nav_forecasting button 
+.st-key-top_nav_requests button{{
     min-height:
         48px !important;
 
@@ -387,6 +388,24 @@ def _render_athlete_top_navigation(
 }}
 
 
+.st-key-top_nav_dashboard button,
+.st-key-top_nav_upload button,
+.st-key-top_nav_prediction button,
+.st-key-top_nav_history button,
+.st-key-top_nav_timeline button,
+.st-key-top_nav_visualisation button,
+.st-key-top_nav_simulation button,
+.st-key-top_nav_forecasting button,
+.st-key-top_nav_requests button {{
+    background: #0c1728 !important;
+    color: #d8e3ef !important;
+    border: 1px solid #1f3954 !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+    min-height: 74px !important;
+    font-weight: 500 !important;
+}}
+
 .st-key-top_nav_dashboard button:hover,
 .st-key-top_nav_upload button:hover,
 .st-key-top_nav_prediction button:hover,
@@ -394,20 +413,28 @@ def _render_athlete_top_navigation(
 .st-key-top_nav_timeline button:hover,
 .st-key-top_nav_visualisation button:hover,
 .st-key-top_nav_simulation button:hover,
-.st-key-top_nav_forecasting button:hover {{
-    border-color:
-        rgba(34, 211, 238, 0.60)
-        !important;
-
-    background:
-        linear-gradient(
-            135deg,
-            rgba(37, 99, 235, 0.50),
-            rgba(6, 182, 212, 0.38)
-        )
-        !important;
+.st-key-top_nav_forecasting button:hover,
+.st-key-top_nav_requests button:hover {{
+    background: #10233a !important;
+    color: #ffffff !important;
+    border-color: #2a5778 !important;
+    box-shadow: none !important;
 }}
 
+.st-key-top_nav_dashboard button:focus,
+.st-key-top_nav_upload button:focus,
+.st-key-top_nav_prediction button:focus,
+.st-key-top_nav_history button:focus,
+.st-key-top_nav_timeline button:focus,
+.st-key-top_nav_visualisation button:focus,
+.st-key-top_nav_simulation button:focus,
+.st-key-top_nav_forecasting button:focus,
+.st-key-top_nav_requests button:focus {{
+    background: #0c1728 !important;
+    color: #d8e3ef !important;
+    border-color: #1f3954 !important;
+    box-shadow: none !important;
+}}
 
 /* =========================================================
    AI VIEW DETAILS BUTTONS
@@ -565,7 +592,7 @@ def _render_athlete_top_navigation(
         # ONE-ROW NAVIGATION
         # ====================================================
 
-        nav = st.columns(8)
+        nav = st.columns(9)
 
         with nav[0]:
 
@@ -581,14 +608,13 @@ def _render_athlete_top_navigation(
         with nav[1]:
 
             if st.button(
-                "Upload Garmin",
+                "Upload Data",
                 key="top_nav_upload",
                 use_container_width=True,
             ):
                 open_athlete_page(
                     "Upload Garmin Data"
-                )
-
+                    )
         with nav[2]:
 
             if st.button(
@@ -654,6 +680,16 @@ def _render_athlete_top_navigation(
                 open_athlete_page(
                     "Forecasting"
                 )
+
+        with nav[8]:
+            if st.button(
+                "Requests",
+                key="top_nav_requests",
+                use_container_width=True,
+                ):
+                open_athlete_page(
+                    "Requests"
+                    )
 
 
 # ============================================================

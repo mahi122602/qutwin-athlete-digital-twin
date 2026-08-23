@@ -54,6 +54,10 @@ from database.connection_request_repository import (
     mark_all_notifications_read,
 )
 
+from views.request_pages import (
+    athlete_requests_page,
+    coach_requests_page,
+)
 
 # ============================================================
 # STREAMLIT PAGE CONFIGURATION
@@ -1068,6 +1072,9 @@ def athlete_navigation():
         "Forecasting":
             athlete_forecasting,
 
+        "Requests":
+            athlete_requests_page,
+
         "Model Evaluation":
             model_evaluation_dashboard,
 
@@ -1145,6 +1152,8 @@ def coach_navigation():
 
         "Assigned Athletes",
 
+        "Requests",
+
         "Coach Intelligence Dashboard",
 
         "Selected Athlete Twin Summary",
@@ -1199,6 +1208,9 @@ def coach_navigation():
 
         "Assigned Athletes":
             assigned_athletes,
+
+        "Requests": 
+            coach_requests_page,
 
         "Coach Intelligence Dashboard":
             coach_intelligence_dashboard,
