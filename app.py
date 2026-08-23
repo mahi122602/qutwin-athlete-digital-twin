@@ -13,6 +13,7 @@ from views.athlete_home import (
 from views.forecasting_page import athlete_forecasting
 from views.model_evaluation_page import model_evaluation_dashboard
 
+
 from views.auth_pages import (
     login_page,
     signup_page,
@@ -32,7 +33,6 @@ from views.athlete_pages import (
 
 from views.coach_pages import (
     coach_dashboard,
-    assign_athlete,
     assigned_athletes,
     coach_intelligence_dashboard,
     selected_athlete_twin_summary,
@@ -1148,8 +1148,6 @@ def coach_navigation():
 
         "Digital Twin Dashboard",
 
-        "Assign Athlete to Coach",
-
         "Assigned Athletes",
 
         "Requests",
@@ -1202,9 +1200,6 @@ def coach_navigation():
 
         "Digital Twin Dashboard":
             coach_dashboard,
-
-        "Assign Athlete to Coach":
-            assign_athlete,
 
         "Assigned Athletes":
             assigned_athletes,
