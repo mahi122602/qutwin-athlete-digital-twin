@@ -17,12 +17,130 @@ from database.connection_request_repository import (
 
 def open_athlete_page(page_name):
     """
-    Navigate without reloading the browser URL.
+    Navigate using Streamlit session state.
 
-    This keeps the current Streamlit authentication session alive
-    and prevents the login page from flashing between pages.
+    This prevents browser-level URL navigation and keeps
+    the authenticated Streamlit session alive.
     """
     st.session_state.current_page = page_name
+    st.rerun()
+
+
+# ============================================================
+# ATHLETE NAVIGATION CAROUSEL
+# ============================================================
+
+ATHLETE_NAV_ITEMS = [
+    {
+        "label": "Dashboard",
+        "page": "Digital Twin Dashboard",
+        "key": "dashboard",
+    },
+    {
+        "label": "Upload Data",
+        "page": "Upload Garmin Data",
+        "key": "upload",
+    },
+    {
+        "label": "Prediction",
+        "page": "Predictions & Coach Recommendations",
+        "key": "prediction",
+    },
+    {
+        "label": "History",
+        "page": "Digital Twin History",
+        "key": "history",
+    },
+    {
+        "label": "Timeline",
+        "page": "Digital Twin Timeline",
+        "key": "timeline",
+    },
+    {
+        "label": "Visualisation",
+        "page": "Visualisations / Graphs",
+        "key": "visualisation",
+    },
+    {
+        "label": "What-if",
+        "page": "What-if Simulation",
+        "key": "simulation",
+    },
+    {
+        "label": "Forecasting",
+        "page": "Forecasting",
+        "key": "forecasting",
+    },
+    {
+        "label": "Requests",
+        "page": "Requests",
+        "key": "requests",
+    },
+]
+
+NAV_ITEMS_PER_PAGE = 3
+
+
+def _initialise_athlete_nav_carousel():
+    """Initialise carousel state once per Streamlit session."""
+
+    if "athlete_nav_carousel_start" not in st.session_state:
+        st.session_state.athlete_nav_carousel_start = 0
+
+    if "athlete_nav_slide_direction" not in st.session_state:
+        st.session_state.athlete_nav_slide_direction = "none"
+
+    if "athlete_nav_animation_nonce" not in st.session_state:
+        st.session_state.athlete_nav_animation_nonce = 0
+
+
+def _carousel_max_start():
+    """Return the last valid 3-item carousel page start."""
+
+    if not ATHLETE_NAV_ITEMS:
+        return 0
+
+    return (
+        (len(ATHLETE_NAV_ITEMS) - 1)
+        // NAV_ITEMS_PER_PAGE
+    ) * NAV_ITEMS_PER_PAGE
+
+
+def _move_athlete_nav_carousel(direction):
+    """
+    Move one complete carousel page and remember the direction.
+
+    The direction is used by CSS after rerun to create the
+    sliding-door transition.
+    """
+
+    _initialise_athlete_nav_carousel()
+
+    current = int(
+        st.session_state.athlete_nav_carousel_start
+    )
+
+    if direction == "left":
+        new_start = max(
+            0,
+            current - NAV_ITEMS_PER_PAGE,
+        )
+
+    elif direction == "right":
+        new_start = min(
+            _carousel_max_start(),
+            current + NAV_ITEMS_PER_PAGE,
+        )
+
+    else:
+        return
+
+    if new_start == current:
+        return
+
+    st.session_state.athlete_nav_carousel_start = new_start
+    st.session_state.athlete_nav_slide_direction = direction
+    st.session_state.athlete_nav_animation_nonce += 1
     st.rerun()
 
 
@@ -30,45 +148,63 @@ def open_athlete_page(page_name):
 # GENERAL HELPERS
 # ============================================================
 
-def _safe_float(value, default=0.0):
+def _safe_float(
+    value,
+    default=0.0,
+):
     try:
         if pd.isna(value):
             return default
 
         return float(value)
 
-    except (TypeError, ValueError):
+    except (
+        TypeError,
+        ValueError,
+    ):
         return default
 
 
-def _photo_to_data_uri(profile_photo):
+def _photo_to_data_uri(
+    profile_photo,
+):
     """
-    Convert the profile-photo bytes stored in PostgreSQL into
-    a base64 data URI that can be used as a CSS background image.
+    Convert profile-photo bytes stored in PostgreSQL into a
+    base64 data URI for the clickable avatar.
     """
 
     if profile_photo is None:
         return None
 
-    if isinstance(profile_photo, memoryview):
+    if isinstance(
+        profile_photo,
+        memoryview,
+    ):
         profile_photo = profile_photo.tobytes()
 
-    elif isinstance(profile_photo, bytearray):
+    elif isinstance(
+        profile_photo,
+        bytearray,
+    ):
         profile_photo = bytes(profile_photo)
 
-    if not isinstance(profile_photo, bytes):
+    if not isinstance(
+        profile_photo,
+        bytes,
+    ):
         return None
 
     if not profile_photo:
         return None
 
-    # --------------------------------------------------------
-    # Detect image format
-    # --------------------------------------------------------
-    if profile_photo.startswith(b"\x89PNG"):
+    if profile_photo.startswith(
+        b"\x89PNG"
+    ):
         mime_type = "image/png"
 
-    elif profile_photo.startswith(b"\xff\xd8\xff"):
+    elif profile_photo.startswith(
+        b"\xff\xd8\xff"
+    ):
         mime_type = "image/jpeg"
 
     elif profile_photo.startswith(
@@ -92,7 +228,153 @@ def _photo_to_data_uri(profile_photo):
         profile_photo
     ).decode("ascii")
 
-    return f"data:{mime_type};base64,{encoded}"
+    return (
+        f"data:{mime_type};"
+        f"base64,{encoded}"
+    )
+
+
+# ============================================================
+# ATHLETE NAVIGATION CAROUSEL RENDERER
+# ============================================================
+
+def _render_athlete_nav_carousel():
+    """
+    Render the same 3-item arrow carousel on every device.
+
+    The arrows remain fixed while only the three centre items
+    animate. Pressing left makes the new nav group slide left
+    into place; pressing right makes it slide right into place.
+    """
+
+    _initialise_athlete_nav_carousel()
+
+    start = int(
+        st.session_state.athlete_nav_carousel_start
+    )
+
+    direction = st.session_state.get(
+        "athlete_nav_slide_direction",
+        "none",
+    )
+
+    nonce = int(
+        st.session_state.get(
+            "athlete_nav_animation_nonce",
+            0,
+        )
+    )
+
+    visible_items = ATHLETE_NAV_ITEMS[
+        start:
+        start + NAV_ITEMS_PER_PAGE
+    ]
+
+    padded_items = visible_items + [None] * (
+        NAV_ITEMS_PER_PAGE - len(visible_items)
+    )
+
+    with st.container(
+        key="athlete_nav_carousel"
+    ):
+
+        (
+            left_arrow_col,
+            centre_col,
+            right_arrow_col,
+        ) = st.columns(
+            [
+                0.34,
+                3.0,
+                0.34,
+            ],
+            gap="small",
+            vertical_alignment="center",
+        )
+
+        # ----------------------------------------------------
+        # LEFT ARROW
+        # ----------------------------------------------------
+
+        with left_arrow_col:
+            if st.button(
+                "‹",
+                key="athlete_nav_left",
+                help="Previous navigation options",
+                disabled=(start <= 0),
+                use_container_width=True,
+            ):
+                _move_athlete_nav_carousel(
+                    "left"
+                )
+
+        # ----------------------------------------------------
+        # SLIDING CENTRE TRACK
+        # ----------------------------------------------------
+
+        with centre_col:
+
+            track_key = (
+                f"athlete_nav_track_"
+                f"{direction}_"
+                f"{nonce}"
+            )
+
+            with st.container(
+                key=track_key
+            ):
+
+                nav_cols = st.columns(
+                    3,
+                    gap="small",
+                    vertical_alignment="center",
+                )
+
+                for nav_col, item in zip(
+                    nav_cols,
+                    padded_items,
+                ):
+
+                    with nav_col:
+
+                        if item is None:
+                            st.empty()
+                            continue
+
+                        if st.button(
+                            item["label"],
+                            key=(
+                                f"top_nav_"
+                                f"{item['key']}"
+                            ),
+                            help=(
+                                f"Open "
+                                f"{item['label']}"
+                            ),
+                            use_container_width=True,
+                        ):
+                            open_athlete_page(
+                                item["page"]
+                            )
+
+        # ----------------------------------------------------
+        # RIGHT ARROW
+        # ----------------------------------------------------
+
+        with right_arrow_col:
+            if st.button(
+                "›",
+                key="athlete_nav_right",
+                help="More navigation options",
+                disabled=(
+                    start
+                    >= _carousel_max_start()
+                ),
+                use_container_width=True,
+            ):
+                _move_athlete_nav_carousel(
+                    "right"
+                )
 
 
 # ============================================================
@@ -104,26 +386,21 @@ def _render_athlete_top_navigation(
     unread_count=0,
 ):
     """
-    Athlete main header.
+    Render the sticky Athlete header and carousel navigation.
 
-    LEFT:
-        clickable athlete avatar
-        QUTwin brand
-
-    RIGHT:
-        notification bell
-        settings
-
-    SECOND ROW:
-        eight athlete navigation buttons
-
-    Every control uses Streamlit session-state navigation.
+    The header remains at the top while scrolling. It uses normal
+    document flow, so it does not cover the dashboard underneath.
     """
 
     athlete_name = (
         profile.get("name")
-        if profile and profile.get("name")
-        else str(st.session_state.user_id)
+        if (
+            profile
+            and profile.get("name")
+        )
+        else str(
+            st.session_state.user_id
+        )
     )
 
     profile_photo = (
@@ -138,7 +415,8 @@ def _render_athlete_top_navigation(
 
     initials = "".join(
         part[0].upper()
-        for part in str(athlete_name).split()
+        for part
+        in str(athlete_name).split()
         if part
     )[:2]
 
@@ -172,7 +450,7 @@ def _render_athlete_top_navigation(
         avatar_text_colour = "white"
 
     # ========================================================
-    # STYLES
+    # RESPONSIVE + CAROUSEL CSS
     # ========================================================
 
     st.markdown(
@@ -180,213 +458,316 @@ def _render_athlete_top_navigation(
 <style>
 
 /* =========================================================
-   STICKY TOP NAVIGATION CONTAINER
-   ========================================================= */
+   REMOVE STREAMLIT TOP GAP / TOOLBAR
+========================================================= */
+
+header[data-testid="stHeader"],
+[data-testid="stToolbar"],
+[data-testid="stDecoration"],
+[data-testid="stStatusWidget"] {{
+    display: none !important;
+}}
+
+.main .block-container,
+.stMainBlockContainer,
+[data-testid="stAppViewBlockContainer"] {{
+    padding-top: 0 !important;
+}}
+
+
+/* =========================================================
+   GLOBAL WIDTH SAFETY
+========================================================= */
+
+html,
+body,
+[data-testid="stAppViewContainer"],
+.stApp,
+.main,
+.main .block-container {{
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: clip !important;
+    box-sizing: border-box !important;
+}}
+
+*,
+*::before,
+*::after {{
+    box-sizing: border-box !important;
+}}
+
+img {{
+    max-width: 100% !important;
+}}
+
+
+/* =========================================================
+   STICKY TOP SHELL
+
+   Sticky, NOT fixed. This keeps the navbar at the top while
+   also reserving the correct space in normal page flow.
+========================================================= */
 
 .st-key-athlete_top_nav_shell {{
-    position: sticky;
-    top: 0;
-    z-index: 999;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 99999 !important;
 
-    padding:
-        12px
-        14px
-        10px
-        14px;
+    width: 100% !important;
+    max-width: 100% !important;
 
-    margin-bottom:
-        18px;
+    margin: 0 0 18px 0 !important;
+    padding: 12px 18px 12px 18px !important;
 
-    border:
-        1px solid
-        rgba(56, 189, 248, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.15) !important;
+    border-top: none !important;
+    border-radius: 0 0 18px 18px !important;
 
-    border-radius:
-        0 0 18px 18px;
+    background: rgba(2, 12, 27, 0.97) !important;
 
-    background:
-        rgba(2, 12, 27, 0.96);
-
-    backdrop-filter:
-        blur(16px);
+    backdrop-filter: blur(18px) !important;
+    -webkit-backdrop-filter: blur(18px) !important;
 
     box-shadow:
-        0 12px 30px
-        rgba(0, 0, 0, 0.20);
+        0 10px 28px rgba(0, 0, 0, 0.24)
+        !important;
+
+    overflow: visible !important;
+}}
+
+
+/* =========================================================
+   HEADER ROW
+========================================================= */
+
+.st-key-athlete_header_row
+[data-testid="stHorizontalBlock"] {{
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+}}
+
+.st-key-athlete_header_row
+[data-testid="column"] {{
+    min-width: 0 !important;
+    padding: 0 !important;
+}}
+
+.st-key-athlete_header_row
+[data-testid="column"]:nth-child(1) {{
+    flex: 0 0 68px !important;
+    width: 68px !important;
+}}
+
+.st-key-athlete_header_row
+[data-testid="column"]:nth-child(2) {{
+    flex: 1 1 auto !important;
+    width: auto !important;
+}}
+
+.st-key-athlete_header_row
+[data-testid="column"]:nth-child(3) {{
+    flex: 0 0 84px !important;
+    width: 84px !important;
+}}
+
+.st-key-athlete_header_row
+[data-testid="column"]:nth-child(4) {{
+    flex: 0 0 64px !important;
+    width: 64px !important;
 }}
 
 
 /* =========================================================
    CLICKABLE ATHLETE AVATAR
-   ========================================================= */
+========================================================= */
 
 .st-key-athlete_avatar_circle button {{
-    width:
-        62px !important;
+    width: 62px !important;
+    height: 62px !important;
+    min-width: 62px !important;
+    min-height: 62px !important;
 
-    height:
-        62px !important;
+    padding: 0 !important;
 
-    min-width:
-        62px !important;
-
-    min-height:
-        62px !important;
-
-    padding:
-        0 !important;
-
-    border-radius:
-        50% !important;
-
-    border:
-        3px solid
-        #22d3ee !important;
+    border-radius: 50% !important;
+    border: 3px solid #22d3ee !important;
 
     {avatar_background}
 
-    color:
-        {avatar_text_colour} !important;
+    color: {avatar_text_colour} !important;
 
-    font-weight:
-        850 !important;
-
-    font-size:
-        17px !important;
+    font-size: 17px !important;
+    font-weight: 850 !important;
 
     box-shadow:
-        0
-        0
-        0
-        4px
-        rgba(34, 211, 238, 0.10)
+        0 0 0 4px rgba(34, 211, 238, 0.10)
         !important;
 
     transition:
-        transform
-        0.16s
-        ease,
-        border-color
-        0.16s
-        ease,
-        box-shadow
-        0.16s
-        ease;
+        transform 0.16s ease,
+        border-color 0.16s ease,
+        box-shadow 0.16s ease;
 }}
 
-
 .st-key-athlete_avatar_circle button:hover {{
-    transform:
-        scale(1.05);
-
-    border-color:
-        #67e8f9 !important;
+    transform: scale(1.05);
+    border-color: #67e8f9 !important;
 
     box-shadow:
-        0
-        0
-        0
-        5px
-        rgba(34, 211, 238, 0.18)
+        0 0 0 5px rgba(34, 211, 238, 0.18)
         !important;
 }}
 
-
-/* Hide initials when actual photo is being used */
-
 .st-key-athlete_avatar_circle button p {{
-    color:
-        {avatar_text_colour} !important;
+    color: {avatar_text_colour} !important;
 }}
 
 
 /* =========================================================
    HEADER BELL + SETTINGS
-   ========================================================= */
+========================================================= */
 
 .st-key-athlete_header_notifications button,
 .st-key-athlete_header_settings button {{
-    height:
-        46px !important;
+    width: 100% !important;
+    height: 46px !important;
+    min-height: 46px !important;
 
-    min-height:
-        46px !important;
+    padding: 5px !important;
 
-    border-radius:
-        12px !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
 
-    border:
-        1px solid
-        rgba(148, 163, 184, 0.25)
-        !important;
+    background: rgba(15, 23, 42, 0.78) !important;
+    color: #e2e8f0 !important;
 
-    background:
-        rgba(15, 23, 42, 0.78)
-        !important;
+    box-shadow: none !important;
 }}
-
 
 .st-key-athlete_header_notifications button:hover,
 .st-key-athlete_header_settings button:hover {{
-    border-color:
-        rgba(34, 211, 238, 0.60)
-        !important;
-
-    background:
-        rgba(8, 47, 73, 0.78)
-        !important;
+    border-color: rgba(34, 211, 238, 0.60) !important;
+    background: rgba(8, 47, 73, 0.78) !important;
 }}
 
 
 /* =========================================================
-   TOP NAVIGATION BUTTONS
-   ========================================================= */
+   CAROUSEL OUTER ROW
+========================================================= */
 
-.st-key-top_nav_dashboard button,
-.st-key-top_nav_upload button,
-.st-key-top_nav_prediction button,
-.st-key-top_nav_history button,
-.st-key-top_nav_timeline button,
-.st-key-top_nav_visualisation button,
-.st-key-top_nav_simulation button,
-.st-key-top_nav_forecasting button 
-.st-key-top_nav_requests button{{
-    min-height:
-        48px !important;
-
-    height:
-        100% !important;
-
-    padding:
-        8px 7px !important;
-
-    border-radius:
-        10px !important;
-
-    font-size:
-        11px !important;
-
-    font-weight:
-        650 !important;
-
-    border:
-        1px solid
-        rgba(56, 189, 248, 0.15)
-        !important;
-
-    background:
-        rgba(15, 23, 42, 0.70)
-        !important;
-
-    transition:
-        border-color
-        0.15s
-        ease,
-        background
-        0.15s
-        ease;
+.st-key-athlete_nav_carousel {{
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
 }}
 
+.st-key-athlete_nav_carousel
+[data-testid="stHorizontalBlock"] {{
+    flex-wrap: nowrap !important;
+}}
+
+.st-key-athlete_nav_carousel
+[data-testid="column"] {{
+    min-width: 0 !important;
+}}
+
+
+/* =========================================================
+   SLIDING CENTRE TRACK
+
+   A unique Streamlit key is generated every arrow click.
+   That makes the animation restart after each rerun.
+========================================================= */
+
+[class*="st-key-athlete_nav_track_"] {{
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    will-change: transform, opacity, clip-path;
+}}
+
+[class*="st-key-athlete_nav_track_"]
+[data-testid="stHorizontalBlock"] {{
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 10px !important;
+    width: 100% !important;
+}}
+
+[class*="st-key-athlete_nav_track_"]
+[data-testid="column"] {{
+    flex: 1 1 0 !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+}}
+
+/* Left arrow pressed: new panel moves toward the left. */
+[class*="st-key-athlete_nav_track_left_"] {{
+    animation:
+        qutwinSlideDoorLeft
+        420ms
+        cubic-bezier(0.22, 1, 0.36, 1)
+        both;
+}}
+
+/* Right arrow pressed: new panel moves toward the right. */
+[class*="st-key-athlete_nav_track_right_"] {{
+    animation:
+        qutwinSlideDoorRight
+        420ms
+        cubic-bezier(0.22, 1, 0.36, 1)
+        both;
+}}
+
+@keyframes qutwinSlideDoorLeft {{
+    0% {{
+        opacity: 0;
+        transform: translateX(18%);
+        clip-path: inset(0 0 0 72% round 12px);
+    }}
+
+    55% {{
+        opacity: 0.92;
+        clip-path: inset(0 0 0 10% round 12px);
+    }}
+
+    100% {{
+        opacity: 1;
+        transform: translateX(0);
+        clip-path: inset(0 0 0 0 round 12px);
+    }}
+}}
+
+@keyframes qutwinSlideDoorRight {{
+    0% {{
+        opacity: 0;
+        transform: translateX(-18%);
+        clip-path: inset(0 72% 0 0 round 12px);
+    }}
+
+    55% {{
+        opacity: 0.92;
+        clip-path: inset(0 10% 0 0 round 12px);
+    }}
+
+    100% {{
+        opacity: 1;
+        transform: translateX(0);
+        clip-path: inset(0 0 0 0 round 12px);
+    }}
+}}
+
+
+/* =========================================================
+   NAVIGATION BUTTONS
+========================================================= */
 
 .st-key-top_nav_dashboard button,
 .st-key-top_nav_upload button,
@@ -397,13 +778,36 @@ def _render_athlete_top_navigation(
 .st-key-top_nav_simulation button,
 .st-key-top_nav_forecasting button,
 .st-key-top_nav_requests button {{
+    width: 100% !important;
+    min-width: 0 !important;
+
+    height: 60px !important;
+    min-height: 60px !important;
+
+    padding: 8px 10px !important;
+
+    border-radius: 12px !important;
+    border: 1px solid #1f3954 !important;
+
     background: #0c1728 !important;
     color: #d8e3ef !important;
-    border: 1px solid #1f3954 !important;
-    border-radius: 12px !important;
+
     box-shadow: none !important;
-    min-height: 74px !important;
-    font-weight: 500 !important;
+
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+
+    text-align: center !important;
+
+    transition:
+        background 0.16s ease,
+        border-color 0.16s ease,
+        transform 0.16s ease;
 }}
 
 .st-key-top_nav_dashboard button:hover,
@@ -418,45 +822,243 @@ def _render_athlete_top_navigation(
     background: #10233a !important;
     color: #ffffff !important;
     border-color: #2a5778 !important;
-    box-shadow: none !important;
+    transform: translateY(-1px);
 }}
 
-.st-key-top_nav_dashboard button:focus,
-.st-key-top_nav_upload button:focus,
-.st-key-top_nav_prediction button:focus,
-.st-key-top_nav_history button:focus,
-.st-key-top_nav_timeline button:focus,
-.st-key-top_nav_visualisation button:focus,
-.st-key-top_nav_simulation button:focus,
-.st-key-top_nav_forecasting button:focus,
-.st-key-top_nav_requests button:focus {{
-    background: #0c1728 !important;
-    color: #d8e3ef !important;
-    border-color: #1f3954 !important;
-    box-shadow: none !important;
-}}
 
 /* =========================================================
-   AI VIEW DETAILS BUTTONS
-   ========================================================= */
+   ARROWS
+========================================================= */
+
+.st-key-athlete_nav_left button,
+.st-key-athlete_nav_right button {{
+    width: 100% !important;
+    min-width: 0 !important;
+
+    height: 60px !important;
+    min-height: 60px !important;
+
+    padding: 0 !important;
+
+    border-radius: 12px !important;
+    border: 1px solid #1f3954 !important;
+
+    background: #0c1728 !important;
+    color: #e2e8f0 !important;
+
+    box-shadow: none !important;
+
+    font-size: 30px !important;
+    font-weight: 500 !important;
+    line-height: 1 !important;
+}}
+
+.st-key-athlete_nav_left button:hover:not(:disabled),
+.st-key-athlete_nav_right button:hover:not(:disabled) {{
+    background: #12324c !important;
+    color: #ffffff !important;
+    border-color: #38bdf8 !important;
+}}
+
+.st-key-athlete_nav_left button:disabled,
+.st-key-athlete_nav_right button:disabled {{
+    opacity: 0.28 !important;
+    cursor: default !important;
+}}
+
+
+/* =========================================================
+   AI DETAIL BUTTONS
+========================================================= */
 
 .st-key-dashboard_injury_prediction_details button,
 .st-key-dashboard_fatigue_prediction_details button,
 .st-key-dashboard_recovery_prediction_details button {{
-    margin-top:
-        -2px;
+    margin-top: -2px;
+    min-height: 40px !important;
+    border-radius: 0 0 12px 12px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+}}
 
-    min-height:
-        40px !important;
 
-    border-radius:
-        0 0 12px 12px !important;
+/* =========================================================
+   MOBILE / SMALL TABLET
+========================================================= */
 
-    font-size:
-        12px !important;
+@media (max-width: 700px) {{
 
-    font-weight:
-        700 !important;
+    .main .block-container {{
+        padding: 0 8px 18px 8px !important;
+    }}
+
+    .st-key-athlete_top_nav_shell {{
+        padding: 8px !important;
+        margin-bottom: 12px !important;
+        border-radius: 0 0 14px 14px !important;
+    }}
+
+    .st-key-athlete_header_row
+    [data-testid="stHorizontalBlock"] {{
+        gap: 7px !important;
+    }}
+
+    .st-key-athlete_header_row
+    [data-testid="column"]:nth-child(1) {{
+        flex: 0 0 50px !important;
+        width: 50px !important;
+    }}
+
+    .st-key-athlete_header_row
+    [data-testid="column"]:nth-child(2) {{
+        flex: 1 1 auto !important;
+    }}
+
+    .st-key-athlete_header_row
+    [data-testid="column"]:nth-child(3) {{
+        flex: 0 0 48px !important;
+        width: 48px !important;
+    }}
+
+    .st-key-athlete_header_row
+    [data-testid="column"]:nth-child(4) {{
+        flex: 0 0 44px !important;
+        width: 44px !important;
+    }}
+
+    .st-key-athlete_avatar_circle button {{
+        width: 46px !important;
+        height: 46px !important;
+        min-width: 46px !important;
+        min-height: 46px !important;
+        border-width: 2px !important;
+        font-size: 13px !important;
+    }}
+
+    .qutwin-athlete-brand .qutwin-brand-title {{
+        font-size: 20px !important;
+    }}
+
+    .qutwin-athlete-brand .qutwin-brand-subtitle {{
+        font-size: 9px !important;
+    }}
+
+    .st-key-athlete_header_notifications button,
+    .st-key-athlete_header_settings button {{
+        height: 42px !important;
+        min-height: 42px !important;
+        font-size: 12px !important;
+    }}
+
+    .st-key-athlete_nav_carousel
+    [data-testid="stHorizontalBlock"] {{
+        gap: 5px !important;
+    }}
+
+    [class*="st-key-athlete_nav_track_"]
+    [data-testid="stHorizontalBlock"] {{
+        gap: 5px !important;
+    }}
+
+    .st-key-top_nav_dashboard button,
+    .st-key-top_nav_upload button,
+    .st-key-top_nav_prediction button,
+    .st-key-top_nav_history button,
+    .st-key-top_nav_timeline button,
+    .st-key-top_nav_visualisation button,
+    .st-key-top_nav_simulation button,
+    .st-key-top_nav_forecasting button,
+    .st-key-top_nav_requests button {{
+        height: 50px !important;
+        min-height: 50px !important;
+        padding: 5px 3px !important;
+        border-radius: 9px !important;
+        font-size: 10.5px !important;
+        line-height: 1.1 !important;
+    }}
+
+    .st-key-athlete_nav_left button,
+    .st-key-athlete_nav_right button {{
+        height: 50px !important;
+        min-height: 50px !important;
+        border-radius: 9px !important;
+        font-size: 22px !important;
+    }}
+
+    h1 {{
+        font-size: 27px !important;
+        line-height: 1.15 !important;
+    }}
+
+    h2 {{
+        font-size: 22px !important;
+    }}
+
+    h3 {{
+        font-size: 18px !important;
+    }}
+
+    input,
+    textarea,
+    select {{
+        max-width: 100% !important;
+    }}
+
+    .js-plotly-plot,
+    .plot-container,
+    .plotly,
+    .svg-container {{
+        width: 100% !important;
+        max-width: 100% !important;
+    }}
+}}
+
+
+/* =========================================================
+   LARGE DISPLAY / TV
+========================================================= */
+
+@media (min-width: 1800px) {{
+
+    .main .block-container {{
+        max-width: 1900px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        padding-left: 36px !important;
+        padding-right: 36px !important;
+    }}
+
+    .st-key-top_nav_dashboard button,
+    .st-key-top_nav_upload button,
+    .st-key-top_nav_prediction button,
+    .st-key-top_nav_history button,
+    .st-key-top_nav_timeline button,
+    .st-key-top_nav_visualisation button,
+    .st-key-top_nav_simulation button,
+    .st-key-top_nav_forecasting button,
+    .st-key-top_nav_requests button {{
+        height: 70px !important;
+        min-height: 70px !important;
+        font-size: 16px !important;
+    }}
+
+    .st-key-athlete_nav_left button,
+    .st-key-athlete_nav_right button {{
+        height: 70px !important;
+        min-height: 70px !important;
+        font-size: 34px !important;
+    }}
+}}
+
+
+/* =========================================================
+   ACCESSIBILITY: REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {{
+    [class*="st-key-athlete_nav_track_"] {{
+        animation: none !important;
+    }}
 }}
 
 </style>
@@ -472,111 +1074,131 @@ def _render_athlete_top_navigation(
         key="athlete_top_nav_shell",
     ):
 
-        (
-            avatar_col,
-            brand_col,
-            spacer_col,
-            bell_col,
-            settings_col,
-        ) = st.columns(
-            [
-                0.65,
-                2.0,
-                5.8,
-                0.8,
-                0.8,
-            ],
-            vertical_alignment="center",
-        )
+        # ====================================================
+        # HEADER ROW
+        # ====================================================
 
-        # ----------------------------------------------------
-        # CLICKABLE AVATAR
-        # ----------------------------------------------------
+        with st.container(
+            key="athlete_header_row"
+        ):
 
-        with avatar_col:
+            (
+                avatar_col,
+                brand_col,
+                bell_col,
+                settings_col,
+            ) = st.columns(
+                [
+                    0.65,
+                    7.8,
+                    0.9,
+                    0.75,
+                ],
+                vertical_alignment="center",
+            )
 
-            if st.button(
-                initials,
-                key="athlete_avatar_circle",
-                help=f"Open {athlete_name}'s profile",
-            ):
-                open_athlete_page(
-                    "Profile"
-                )
+            # ------------------------------------------------
+            # AVATAR
+            # ------------------------------------------------
 
-        # ----------------------------------------------------
-        # QUTWIN BRAND
-        # ----------------------------------------------------
+            with avatar_col:
 
-        with brand_col:
+                if st.button(
+                    initials,
+                    key="athlete_avatar_circle",
+                    help=(
+                        f"Open "
+                        f"{athlete_name}'s "
+                        f"profile"
+                    ),
+                ):
+                    open_athlete_page(
+                        "Profile"
+                    )
 
-            st.html(
-                """
-<div style="
-    padding-left:4px;
-">
-    <div style="
-        color:#f8fafc;
-        font-size:27px;
-        font-weight:850;
-        line-height:1;
-        letter-spacing:-0.4px;
-    ">
+            # ------------------------------------------------
+            # BRAND
+            # ------------------------------------------------
+
+            with brand_col:
+
+                st.html(
+                    """
+<div class="qutwin-athlete-brand">
+    <div
+        class="qutwin-brand-title"
+        style="
+            color:#f8fafc;
+            font-size:27px;
+            font-weight:850;
+            line-height:1;
+            letter-spacing:-0.4px;
+        "
+    >
         QUTwin
     </div>
 
-    <div style="
-        color:#94a3b8;
-        font-size:11px;
-        margin-top:6px;
-    ">
+    <div
+        class="qutwin-brand-subtitle"
+        style="
+            color:#94a3b8;
+            font-size:11px;
+            margin-top:6px;
+        "
+    >
         Athlete Digital Twin
     </div>
 </div>
 """
-            )
-
-        # ----------------------------------------------------
-        # NOTIFICATION BELL
-        # ----------------------------------------------------
-
-        with bell_col:
-
-            bell_label = (
-                f"🔔 {unread_count}"
-                if unread_count > 0
-                else "🔔"
-            )
-
-            if st.button(
-                bell_label,
-                key="athlete_header_notifications",
-                help="Notifications",
-                use_container_width=True,
-            ):
-                open_athlete_page(
-                    "Notifications"
                 )
 
-        # ----------------------------------------------------
-        # SETTINGS
-        # ----------------------------------------------------
+            # ------------------------------------------------
+            # NOTIFICATIONS
+            # ------------------------------------------------
 
-        with settings_col:
+            with bell_col:
 
-            if st.button(
-                "⚙️",
-                key="athlete_header_settings",
-                help="Settings",
-                use_container_width=True,
-            ):
-                open_athlete_page(
-                    "Settings"
+                bell_label = (
+                    f"🔔 {unread_count}"
+                    if unread_count > 0
+                    else "🔔"
                 )
 
-        # ----------------------------------------------------
+                if st.button(
+                    bell_label,
+                    key=(
+                        "athlete_header_"
+                        "notifications"
+                    ),
+                    help="Notifications",
+                    use_container_width=True,
+                ):
+                    open_athlete_page(
+                        "Notifications"
+                    )
+
+            # ------------------------------------------------
+            # SETTINGS
+            # ------------------------------------------------
+
+            with settings_col:
+
+                if st.button(
+                    "⚙️",
+                    key=(
+                        "athlete_header_"
+                        "settings"
+                    ),
+                    help="Settings",
+                    use_container_width=True,
+                ):
+                    open_athlete_page(
+                        "Settings"
+                    )
+
+        # ====================================================
         # DIVIDER
-        # ----------------------------------------------------
+        # ====================================================
 
         st.html(
             """
@@ -589,107 +1211,10 @@ def _render_athlete_top_navigation(
         )
 
         # ====================================================
-        # ONE-ROW NAVIGATION
+        # CAROUSEL
         # ====================================================
 
-        nav = st.columns(9)
-
-        with nav[0]:
-
-            if st.button(
-                "Digital Twin Dashboard",
-                key="top_nav_dashboard",
-                use_container_width=True,
-            ):
-                open_athlete_page(
-                    "Digital Twin Dashboard"
-                )
-
-        with nav[1]:
-
-            if st.button(
-                "Upload Data",
-                key="top_nav_upload",
-                use_container_width=True,
-            ):
-                open_athlete_page(
-                    "Upload Garmin Data"
-                    )
-        with nav[2]:
-
-            if st.button(
-                "Prediction",
-                key="top_nav_prediction",
-                use_container_width=True,
-            ):
-                open_athlete_page(
-                    "Predictions & Coach Recommendations"
-                )
-
-        with nav[3]:
-
-            if st.button(
-                "Digital Twin History",
-                key="top_nav_history",
-                use_container_width=True,
-            ):
-                open_athlete_page(
-                    "Digital Twin History"
-                )
-
-        with nav[4]:
-
-            if st.button(
-                "Digital Twin Timeline",
-                key="top_nav_timeline",
-                use_container_width=True,
-            ):
-                open_athlete_page(
-                    "Digital Twin Timeline"
-                )
-
-        with nav[5]:
-
-            if st.button(
-                "Visualisation",
-                key="top_nav_visualisation",
-                use_container_width=True,
-            ):
-                open_athlete_page(
-                    "Visualisations / Graphs"
-                )
-
-        with nav[6]:
-
-            if st.button(
-                "What-if Simulation",
-                key="top_nav_simulation",
-                use_container_width=True,
-            ):
-                open_athlete_page(
-                    "What-if Simulation"
-                )
-
-        with nav[7]:
-
-            if st.button(
-                "Forecasting",
-                key="top_nav_forecasting",
-                use_container_width=True,
-            ):
-                open_athlete_page(
-                    "Forecasting"
-                )
-
-        with nav[8]:
-            if st.button(
-                "Requests",
-                key="top_nav_requests",
-                use_container_width=True,
-                ):
-                open_athlete_page(
-                    "Requests"
-                    )
+        _render_athlete_nav_carousel()
 
 
 # ============================================================
@@ -840,7 +1365,7 @@ def _render_ai_prediction_cards(
     )
 
     # ========================================================
-    # FATIGUE CARD LOGIC
+    # FATIGUE
     # ========================================================
 
     if fatigue_score >= 70:
@@ -894,7 +1419,7 @@ def _render_ai_prediction_cards(
         fatigue_level = "low"
 
     # ========================================================
-    # RECOVERY CARD LOGIC
+    # RECOVERY
     # ========================================================
 
     if readiness_score >= 70:
@@ -949,7 +1474,7 @@ def _render_ai_prediction_cards(
         recovery_level = "high"
 
     # ========================================================
-    # CARD HTML BUILDER
+    # CARD HTML
     # ========================================================
 
     def card_html(
@@ -1062,10 +1587,6 @@ def _render_ai_prediction_cards(
 </div>
 """
 
-    # ========================================================
-    # SECTION HEADING
-    # ========================================================
-
     st.html(
         """
 <div style="
@@ -1080,16 +1601,16 @@ def _render_ai_prediction_cards(
 """
     )
 
-    # ========================================================
-    # THREE AI CARDS
-    # ========================================================
-
-    injury_col, fatigue_col, recovery_col = st.columns(
+    (
+        injury_col,
+        fatigue_col,
+        recovery_col,
+    ) = st.columns(
         3
     )
 
     # --------------------------------------------------------
-    # INJURY RISK
+    # INJURY
     # --------------------------------------------------------
 
     with injury_col:
@@ -1106,7 +1627,10 @@ def _render_ai_prediction_cards(
 
         if st.button(
             "View Details →",
-            key="dashboard_injury_prediction_details",
+            key=(
+                "dashboard_injury_"
+                "prediction_details"
+            ),
             use_container_width=True,
         ):
             open_athlete_page(
@@ -1131,7 +1655,10 @@ def _render_ai_prediction_cards(
 
         if st.button(
             "View Details →",
-            key="dashboard_fatigue_prediction_details",
+            key=(
+                "dashboard_fatigue_"
+                "prediction_details"
+            ),
             use_container_width=True,
         ):
             open_athlete_page(
@@ -1156,7 +1683,10 @@ def _render_ai_prediction_cards(
 
         if st.button(
             "View Details →",
-            key="dashboard_recovery_prediction_details",
+            key=(
+                "dashboard_recovery_"
+                "prediction_details"
+            ),
             use_container_width=True,
         ):
             open_athlete_page(
@@ -1234,7 +1764,9 @@ def _render_summary_cards(
         recovery_class = "warn"
 
     else:
-        recovery_status = "Needs Recovery"
+        recovery_status = (
+            "Needs Recovery"
+        )
         recovery_class = "danger"
 
     # ========================================================
@@ -1246,6 +1778,7 @@ def _render_summary_cards(
     ).lower()
 
     if "high" in risk_text:
+
         risk_status = "High Risk"
         risk_class = "danger"
 
@@ -1253,10 +1786,12 @@ def _render_summary_cards(
         "medium" in risk_text
         or "moderate" in risk_text
     ):
+
         risk_status = "Monitor"
         risk_class = "warn"
 
     else:
+
         risk_status = "Low Risk"
         risk_class = "good"
 
@@ -1265,14 +1800,17 @@ def _render_summary_cards(
     # ========================================================
 
     if training_load >= 700:
+
         load_status = "Heavy"
         load_class = "warn"
 
     elif training_load >= 350:
+
         load_status = "Moderate"
         load_class = "info"
 
     else:
+
         load_status = "Light"
         load_class = "good"
 
@@ -1281,19 +1819,24 @@ def _render_summary_cards(
     # ========================================================
 
     if twin_score >= 80:
+
         twin_status = "Strong"
         twin_class = "good"
 
     elif twin_score >= 60:
+
         twin_status = "Stable"
         twin_class = "info"
 
     else:
-        twin_status = "Needs Attention"
+
+        twin_status = (
+            "Needs Attention"
+        )
         twin_class = "warn"
 
     # ========================================================
-    # SUMMARY CARD BUILDER
+    # CARD BUILDER
     # ========================================================
 
     def summary_card(
@@ -1407,7 +1950,7 @@ def _render_summary_cards(
 """
 
     # ========================================================
-    # SECTION TITLE
+    # TITLE
     # ========================================================
 
     st.html(
@@ -1425,7 +1968,7 @@ def _render_summary_cards(
     )
 
     # ========================================================
-    # FIVE SUMMARY CARDS
+    # SUMMARY CARDS
     # ========================================================
 
     summary_cols = st.columns(
@@ -1473,7 +2016,10 @@ def _render_summary_cards(
         st.html(
             summary_card(
                 "TRAINING LOAD",
-                f"{training_load:.0f} AU",
+                (
+                    f"{training_load:.0f} "
+                    f"AU"
+                ),
                 load_status,
                 load_class,
                 "▥",
@@ -1494,7 +2040,7 @@ def _render_summary_cards(
 
 
 # ============================================================
-# MAIN ATHLETE HOME PAGE
+# MAIN ATHLETE HOME
 # ============================================================
 
 def athlete_feature_gallery():
@@ -1507,8 +2053,10 @@ def athlete_feature_gallery():
     # ATHLETE PROFILE
     # ========================================================
 
-    profile = get_athlete_profile(
-        athlete_id
+    profile = (
+        get_athlete_profile(
+            athlete_id
+        )
     )
 
     # ========================================================
@@ -1522,7 +2070,7 @@ def athlete_feature_gallery():
     )
 
     # ========================================================
-    # UNREAD NOTIFICATION COUNT
+    # UNREAD NOTIFICATIONS
     # ========================================================
 
     try:
@@ -1553,13 +2101,15 @@ def athlete_feature_gallery():
 
     athlete_name = (
         profile.get("name")
-        if profile
-        and profile.get("name")
+        if (
+            profile
+            and profile.get("name")
+        )
         else athlete_id
     )
 
     # ========================================================
-    # LATEST DIGITAL TWIN STATE
+    # LATEST STATE
     # ========================================================
 
     latest = None
@@ -1638,7 +2188,7 @@ def athlete_feature_gallery():
     )
 
     # ========================================================
-    # NO DIGITAL TWIN DATA
+    # NO DATA
     # ========================================================
 
     if latest is None:
@@ -1651,7 +2201,9 @@ def athlete_feature_gallery():
 
         if st.button(
             "Upload Athlete Data",
-            key="home_upload_first_data",
+            key=(
+                "home_upload_first_data"
+            ),
             type="primary",
         ):
 

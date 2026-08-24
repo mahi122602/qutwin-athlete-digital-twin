@@ -39,6 +39,7 @@ from views.coach_pages import (
     coach_history,
     coach_timeline,
     coach_visualisations,
+    coach_portal,
 )
 
 from database.athlete_repository import (
@@ -1283,23 +1284,9 @@ else:
     # COACH
     # ========================================================
 
-    elif (
-        st.session_state.role
-        == "Coach"
-    ):
-
-        show_coach_sidebar()
-
-        coach_navigation()
-
-        st.sidebar.divider()
-
-        if st.sidebar.button(
-            "Logout",
-            use_container_width=True,
-        ):
-
-            perform_logout()
+    elif st.session_state.role == "Coach":
+        hide_sidebar()
+        coach_portal()
 
     # ========================================================
     # INVALID ROLE
