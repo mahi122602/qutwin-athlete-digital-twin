@@ -5,6 +5,7 @@ from typing import Any
 
 import pandas as pd
 import streamlit as st
+import textwrap
 
 from database.forecasting_repository import (
     add_menstrual_cycle,
@@ -106,7 +107,9 @@ def _display_cycle_summary(history_df: pd.DataFrame) -> None:
 
 
 def _prepare_history_for_editor(history_df: pd.DataFrame) -> pd.DataFrame:
+    """Prepare cycle history for editing and explicit user-controlled deletion."""
     columns = [
+        "_delete",
         "cycle_id",
         "period_start_date",
         "period_end_date",
@@ -120,16 +123,19 @@ def _prepare_history_for_editor(history_df: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame(columns=columns)
 
     editor_df = history_df.copy()
+    editor_df["_delete"] = False
+
     editor_df["period_start_date"] = pd.to_datetime(
         editor_df["period_start_date"], errors="coerce"
     ).dt.date
+
     editor_df["period_end_date"] = pd.to_datetime(
         editor_df["period_end_date"], errors="coerce"
     ).dt.date
 
     editor_df["days_periods"] = (
-        pd.to_datetime(editor_df["period_end_date"])
-        - pd.to_datetime(editor_df["period_start_date"])
+        pd.to_datetime(editor_df["period_end_date"], errors="coerce")
+        - pd.to_datetime(editor_df["period_start_date"], errors="coerce")
     ).dt.days + 1
 
     starts = pd.to_datetime(editor_df["period_start_date"], errors="coerce")
@@ -224,11 +230,13 @@ def _render_menstrual_tracking(athlete_id: str) -> pd.DataFrame:
 
     st.markdown("#### Editable cycle history")
     st.caption(
-        "Edit the start or end date directly, add rows, or delete rows. "
-        "Period days and cycle span are recalculated after saving."
+        "Edit dates directly, add a new row, or tick Delete beside an incorrect "
+        "entry. Nothing is deleted until you click Save table changes. Period "
+        "duration, cycle span and forecasting are recalculated after saving."
     )
 
     editor_df = _prepare_history_for_editor(history_df)
+
     edited_df = st.data_editor(
         editor_df,
         use_container_width=True,
@@ -236,6 +244,14 @@ def _render_menstrual_tracking(athlete_id: str) -> pd.DataFrame:
         num_rows="dynamic",
         key="menstrual_history_editor",
         column_config={
+            "_delete": st.column_config.CheckboxColumn(
+                "Delete",
+                help=(
+                    "Tick this box for an incorrect record. The record is "
+                    "permanently deleted only after you click Save table changes."
+                ),
+                default=False,
+            ),
             "cycle_id": st.column_config.NumberColumn(
                 "Record ID",
                 disabled=True,
@@ -260,7 +276,10 @@ def _render_menstrual_tracking(athlete_id: str) -> pd.DataFrame:
                 "Span from previous start",
                 disabled=True,
                 format="%d days",
-                help="Number of days between this period start and the previous period start.",
+                help=(
+                    "Number of days between this period start and the previous "
+                    "period start."
+                ),
             ),
             "symptoms": st.column_config.TextColumn("Symptoms"),
             "athlete_notes": st.column_config.TextColumn("Notes"),
@@ -268,21 +287,68 @@ def _render_menstrual_tracking(athlete_id: str) -> pd.DataFrame:
         disabled=["cycle_id", "days_periods", "cycle_span_days"],
     )
 
+    if "_delete" in edited_df.columns:
+        delete_mask = edited_df["_delete"].fillna(False).astype(bool)
+    else:
+        delete_mask = pd.Series(False, index=edited_df.index)
+
+    delete_count = int(delete_mask.sum())
+
+    if delete_count > 0:
+        st.warning(
+            (
+                f"{delete_count} cycle "
+                f"{'record is' if delete_count == 1 else 'records are'} "
+                "marked for permanent deletion. Click Save table changes to confirm."
+            )
+        )
+
+    save_label = (
+        "Save table changes"
+        if delete_count == 0
+        else (
+            "Save changes & delete "
+            f"{delete_count} "
+            f"{'entry' if delete_count == 1 else 'entries'}"
+        )
+    )
+
     if st.button(
-        "Save table changes",
+        save_label,
         use_container_width=True,
         key="save_cycle_table_changes",
+        type="primary",
     ):
         try:
+            rows_to_save = (
+                edited_df.loc[~delete_mask]
+                .drop(columns=["_delete"], errors="ignore")
+                .reset_index(drop=True)
+            )
+
             replace_menstrual_history(
                 athlete_id=athlete_id,
-                edited_df=edited_df,
+                edited_df=rows_to_save,
                 existing_df=history_df,
             )
+
         except Exception as exc:
-            st.error(f"The edited cycle history could not be saved: {exc}")
+            st.error(
+                f"The cycle history could not be updated: {exc}"
+            )
+
         else:
-            st.success("Cycle history updated.")
+            if delete_count > 0:
+                st.success(
+                    (
+                        f"{delete_count} "
+                        f"{'record was' if delete_count == 1 else 'records were'} "
+                        "deleted successfully."
+                    )
+                )
+            else:
+                st.success("Cycle history updated.")
+
             st.rerun()
 
     return history_df
@@ -314,50 +380,349 @@ def _render_accuracy_status(score: float | None, data_points: int) -> None:
         )
 
 
-def _render_forecast_table(forecast_df: pd.DataFrame, female_path: bool) -> None:
+def _latest_history_date(history_df: pd.DataFrame) -> date | None:
+    """
+    Return the newest real Digital Twin observation date.
+
+    The supported date columns match the forecasting engine.
+    """
+    if history_df is None or history_df.empty:
+        return None
+
+    for candidate in (
+        "timestamp",
+        "date",
+        "activity_date",
+        "recorded_at",
+        "created_at",
+    ):
+        if candidate not in history_df.columns:
+            continue
+
+        parsed = pd.to_datetime(
+            history_df[candidate],
+            errors="coerce",
+        ).dropna()
+
+        if not parsed.empty:
+            return parsed.max().date()
+
+    return None
+
+
+def _prepare_current_forecast_window(
+    full_forecast_df: pd.DataFrame,
+    latest_observation_date: date | None,
+    horizon: int = 7,
+) -> tuple[pd.DataFrame, date | None, int]:
+    """
+    Display the genuine forecast rows for the current viewing window.
+
+    If the newest real observation is old, the engine first forecasts across
+    that missing interval. Only then are the seven rows for the current
+    window selected. Forecast values are never simply relabelled with new dates.
+    """
+    if (
+        full_forecast_df is None
+        or full_forecast_df.empty
+    ):
+        return pd.DataFrame(), None, 0
+
+    table = full_forecast_df.copy()
+
+    table["_forecast_date"] = pd.to_datetime(
+        table["Date"],
+        errors="coerce",
+    ).dt.date
+
+    table = (
+        table
+        .dropna(subset=["_forecast_date"])
+        .sort_values("_forecast_date")
+    )
+
+    today = date.today()
+
+    if latest_observation_date is None:
+        display_start = today
+        stale_gap_days = 0
+    else:
+        first_true_future_date = (
+            latest_observation_date
+            + timedelta(days=1)
+        )
+
+        display_start = max(
+            today,
+            first_true_future_date,
+        )
+
+        stale_gap_days = max(
+            0,
+            (today - latest_observation_date).days,
+        )
+
+    display_df = (
+        table.loc[
+            table["_forecast_date"]
+            >= display_start
+        ]
+        .head(horizon)
+        .drop(
+            columns=["_forecast_date"],
+            errors="ignore",
+        )
+        .reset_index(drop=True)
+    )
+
+    if not display_df.empty:
+        display_df["Span"] = [
+            f"Day {index} of {horizon}"
+            for index in range(
+                1,
+                len(display_df) + 1,
+            )
+        ]
+
+    return (
+        display_df,
+        display_start,
+        stale_gap_days,
+    )
+
+
+def _render_forecast_window_status(
+    latest_observation_date: date | None,
+    display_start: date | None,
+    stale_gap_days: int,
+) -> None:
+    """Explain the date window and freshness of the data used."""
+    if display_start is None:
+        return
+
+    display_end = (
+        display_start
+        + timedelta(days=6)
+    )
+
+    first, second, third = st.columns(3)
+
+    first.metric(
+        "Forecast starts",
+        display_start.strftime(
+            "%d %b %Y"
+        ),
+    )
+
+    second.metric(
+        "Latest athlete data",
+        (
+            latest_observation_date.strftime(
+                "%d %b %Y"
+            )
+            if latest_observation_date
+            else "Not available"
+        ),
+    )
+
+    third.metric(
+        "Current window",
+        (
+            f"{display_start.strftime('%d %b')} – "
+            f"{display_end.strftime('%d %b %Y')}"
+        ),
+    )
+
+    if (
+        latest_observation_date
+        and stale_gap_days > 0
+    ):
+        st.warning(
+            (
+                f"The latest real Digital Twin observation is "
+                f"{stale_gap_days} day"
+                f"{'s' if stale_gap_days != 1 else ''} old. "
+                "The model forecasts across that missing interval first, "
+                "then shows the current seven-day window. Uploading current "
+                "athlete data will improve forecast reliability."
+            )
+        )
+
+    elif (
+        latest_observation_date
+        == date.today()
+    ):
+        st.caption(
+            (
+                "A real Digital Twin observation already exists for today, "
+                "so the true future forecast begins tomorrow."
+            )
+        )
+
+
+def _render_forecast_table(
+    forecast_df: pd.DataFrame,
+    female_path: bool,
+) -> None:
+    """
+    Render a simplified athlete-facing seven-day forecast table.
+
+    Technical fields remain available to the forecasting engine and the
+    model-evaluation section, but they are intentionally hidden here.
+    """
+    if (
+        forecast_df is None
+        or forecast_df.empty
+    ):
+        st.info(
+            "No forecast results are available."
+        )
+        return
+
     display_df = forecast_df.copy()
 
-    if not female_path and "Cycle context" in display_df.columns:
-        display_df = display_df.drop(columns=["Cycle context"])
+    rename_map = {
+        "Span": "Day",
+        "Fatigue forecast": "Fatigue",
+        "Readiness forecast": "Readiness",
+        "Injury-risk score": "Injury risk",
+        "Injury-risk result": "Risk level",
+        "Digital Twin score": "Twin score",
+        "Health index": "Health index",
+        "AI recommendation": "AI recommendation",
+        "Coach recommendation": "Coach recommendation",
+    }
+
+    display_df = display_df.rename(
+        columns=rename_map
+    )
+
+    def wrap_recommendation(
+        value: Any,
+        width: int = 58,
+    ) -> str:
+        if value is None:
+            return "No recommendation"
+
+        try:
+            if pd.isna(value):
+                return "No recommendation"
+        except (
+            TypeError,
+            ValueError,
+        ):
+            pass
+
+        clean = str(value).strip()
+
+        if not clean:
+            return "No recommendation"
+
+        wrapped_lines = textwrap.wrap(
+            clean,
+            width=width,
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+
+        return "\n".join(
+            wrapped_lines
+        )
+
+    for column in (
+        "AI recommendation",
+        "Coach recommendation",
+    ):
+        if column in display_df.columns:
+            display_df[column] = (
+                display_df[column]
+                .apply(
+                    wrap_recommendation
+                )
+            )
 
     preferred_order = [
         "Date",
-        "Span",
-        "Cycle context",
-        "Forecast result",
-        "Fatigue forecast",
-        "Readiness forecast",
-        "Injury-risk score",
-        "Injury-risk result",
-        "Digital Twin score",
+        "Day",
+        "Fatigue",
+        "Readiness",
+        "Injury risk",
+        "Risk level",
+        "Twin score",
         "Health index",
         "AI recommendation",
         "Coach recommendation",
-        "Forecast method",
-        "Confidence",
     ]
-    display_columns = [column for column in preferred_order if column in display_df]
+
+    display_columns = [
+        column
+        for column in preferred_order
+        if column in display_df.columns
+    ]
 
     st.dataframe(
-        display_df[display_columns],
+        display_df[
+            display_columns
+        ],
         use_container_width=True,
         hide_index=True,
+        row_height=82,
         column_config={
-            "Date": st.column_config.DateColumn("Date", format="DD MMM YYYY"),
-            "Fatigue forecast": st.column_config.ProgressColumn(
-                "Fatigue", min_value=0, max_value=100, format="%.1f"
+            "Date": st.column_config.DateColumn(
+                "Date",
+                format="DD MMM YYYY",
+                width="small",
             ),
-            "Readiness forecast": st.column_config.ProgressColumn(
-                "Readiness", min_value=0, max_value=100, format="%.1f"
+            "Day": st.column_config.TextColumn(
+                "Day",
+                width="small",
             ),
-            "Injury-risk score": st.column_config.ProgressColumn(
-                "Injury risk", min_value=0, max_value=100, format="%.1f"
+            "Fatigue": st.column_config.ProgressColumn(
+                "Fatigue",
+                min_value=0,
+                max_value=100,
+                format="%.1f",
+                width="medium",
             ),
-            "Digital Twin score": st.column_config.ProgressColumn(
-                "Twin score", min_value=0, max_value=100, format="%.1f"
+            "Readiness": st.column_config.ProgressColumn(
+                "Readiness",
+                min_value=0,
+                max_value=100,
+                format="%.1f",
+                width="medium",
+            ),
+            "Injury risk": st.column_config.ProgressColumn(
+                "Injury risk",
+                min_value=0,
+                max_value=100,
+                format="%.1f",
+                width="medium",
+            ),
+            "Risk level": st.column_config.TextColumn(
+                "Risk level",
+                width="small",
+            ),
+            "Twin score": st.column_config.ProgressColumn(
+                "Twin score",
+                min_value=0,
+                max_value=100,
+                format="%.1f",
+                width="medium",
             ),
             "Health index": st.column_config.ProgressColumn(
-                "Health index", min_value=0, max_value=100, format="%.1f"
+                "Health index",
+                min_value=0,
+                max_value=100,
+                format="%.1f",
+                width="medium",
+            ),
+            "AI recommendation": st.column_config.TextColumn(
+                "AI recommendation",
+                width="large",
+            ),
+            "Coach recommendation": st.column_config.TextColumn(
+                "Coach recommendation",
+                width="large",
             ),
         },
     )
@@ -425,15 +790,14 @@ def _render_forecast_visualisation(
         for column in (
             "Date",
             "Span",
-            "Forecast result",
+            "Fatigue forecast",
+            "Readiness forecast",
             "Injury-risk result",
-            "Confidence",
+            "Digital Twin score",
+            "Health index",
         )
         if column in forecast_df.columns
     ]
-
-    if female_path and "Cycle context" in forecast_df.columns:
-        summary_columns.insert(2, "Cycle context")
 
     if summary_columns:
         with st.expander("View seven-day visual summary"):
@@ -447,6 +811,35 @@ def _render_forecast_visualisation(
                     ),
                 },
             )
+
+
+
+@st.cache_data(
+    show_spinner=False,
+    ttl=300,
+)
+def _build_forecast_bundle_cached(
+    history_df: pd.DataFrame,
+    gender: str,
+    cycles_df: pd.DataFrame | None,
+    coach_recommendation: str | None,
+    horizon: int,
+):
+    """
+    Cache the expensive multi-model forecast for a short period.
+
+    Streamlit reruns the page whenever a widget changes. Without caching,
+    ARIMA, Holt-Winters, regression and rolling-origin evaluation would all
+    be fitted again on every rerun.
+    """
+    return build_forecast_bundle(
+        history_df=history_df,
+        gender=gender,
+        cycles_df=cycles_df,
+        coach_recommendation=coach_recommendation,
+        horizon=horizon,
+    )
+
 
 
 def athlete_forecasting() -> None:
@@ -558,24 +951,155 @@ def athlete_forecasting() -> None:
 
     coach_text = _coach_recommendation_text(str(athlete_id))
 
-    try:
-        bundle = build_forecast_bundle(
-            history_df=history_df,
-            gender="Female" if female_path else gender,
-            cycles_df=cycles_df if female_path else None,
-            coach_recommendation=coach_text,
-            horizon=7,
+    # ========================================================
+    # CURRENT-DATE FORECAST ALIGNMENT
+    # ========================================================
+
+    latest_observation_date = (
+        _latest_history_date(
+            history_df
         )
+    )
+
+    today = date.today()
+
+    if latest_observation_date is None:
+        first_engine_forecast_date = today
+        days_to_bridge = 0
+        display_start = today
+        stale_gap_days = 0
+    else:
+        first_engine_forecast_date = (
+            latest_observation_date
+            + timedelta(days=1)
+        )
+
+        days_to_bridge = max(
+            0,
+            (
+                today
+                - first_engine_forecast_date
+            ).days,
+        )
+
+        display_start = max(
+            today,
+            first_engine_forecast_date,
+        )
+
+        stale_gap_days = max(
+            0,
+            (
+                today
+                - latest_observation_date
+            ).days,
+        )
+
+    # Show the date window immediately so the page never looks empty
+    # while the multi-model forecast is being calculated.
+    _render_forecast_window_status(
+        latest_observation_date=(
+            latest_observation_date
+        ),
+        display_start=display_start,
+        stale_gap_days=stale_gap_days,
+    )
+
+    # Forecast all hidden bridge dates first, then the visible seven days.
+    # Example:
+    # latest real data = 15 Aug, today = 27 Aug
+    # internal forecast = 16 Aug -> 02 Sep
+    # visible forecast  = 27 Aug -> 02 Sep
+    internal_horizon = (
+        days_to_bridge
+        + 7
+    )
+
+    if days_to_bridge > 30:
+        st.error(
+            (
+                "The latest Digital Twin observation is too old for a "
+                "responsible current seven-day forecast. Upload current "
+                "athlete data before generating a new forecast."
+            )
+        )
+        return
+
+    gender_for_model = (
+        "Female"
+        if female_path
+        else gender
+    )
+
+    cycles_for_model = (
+        cycles_df
+        if female_path
+        else None
+    )
+
+    try:
+        with st.spinner(
+            (
+                "Generating the current seven-day forecast. "
+                "The model is validating regression and time-series "
+                "methods before displaying the results..."
+            )
+        ):
+            bundle = (
+                _build_forecast_bundle_cached(
+                    history_df=history_df,
+                    gender=gender_for_model,
+                    cycles_df=cycles_for_model,
+                    coach_recommendation=(
+                        coach_text
+                    ),
+                    horizon=internal_horizon,
+                )
+            )
+
     except Exception as exc:
-        st.error(f"The seven-day forecast could not be generated: {exc}")
+        st.error(
+            "The seven-day forecast could not be generated."
+        )
+        st.exception(exc)
+        return
+
+    (
+        forecast_table,
+        _,
+        _,
+    ) = _prepare_current_forecast_window(
+        full_forecast_df=bundle.table,
+        latest_observation_date=(
+            latest_observation_date
+        ),
+        horizon=7,
+    )
+
+    if forecast_table.empty:
+        st.error(
+            (
+                "The forecasting engine completed, but no rows matched "
+                "the current seven-day window. This usually means the "
+                "forecast dates and Digital Twin history dates are not aligned."
+            )
+        )
         return
 
     _render_accuracy_status(
         score=bundle.overall_validation_score,
         data_points=bundle.data_points,
     )
-    _render_forecast_table(bundle.table, female_path=female_path)
-    _render_forecast_visualisation(bundle.table, female_path=female_path)
+
+    _render_forecast_table(
+        forecast_table,
+        female_path=female_path,
+    )
+
+    _render_forecast_visualisation(
+        forecast_table,
+        female_path=female_path,
+    )
 
     with st.expander("Model evaluation and forecast-combination details"):
         st.markdown(
@@ -609,7 +1133,7 @@ def athlete_forecasting() -> None:
                     else "general"
                     ),
                 validation_score=bundle.overall_validation_score,
-                forecast_df=bundle.table,
+                forecast_df=forecast_table,
                 evaluation_df=bundle.evaluation,
             )
         except Exception as exc:
