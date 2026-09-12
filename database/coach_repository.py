@@ -1,7 +1,9 @@
+from utils.performance import request_cached, invalidate_reads
 from database.connection import get_connection
 from authentication.password_utils import hash_password, check_password
 
 
+@invalidate_reads
 def register_coach(coach_id, name, password):
     conn = get_connection()
     cur = conn.cursor()
@@ -42,6 +44,7 @@ def login_coach(coach_id, password):
     return check_password(password, result[0])
 
 
+@invalidate_reads
 def assign_athlete_to_coach(coach_id, athlete_id):
     conn = get_connection()
     cur = conn.cursor()
@@ -57,6 +60,7 @@ def assign_athlete_to_coach(coach_id, athlete_id):
     conn.close()
 
 
+@request_cached
 def get_assigned_athletes(coach_id):
     conn = get_connection()
     cur = conn.cursor()
@@ -84,6 +88,7 @@ def get_assigned_athletes(coach_id):
     return rows
 
 
+@request_cached
 def get_coach_athlete_risk_dashboard(coach_id):
     conn = get_connection()
     cur = conn.cursor()

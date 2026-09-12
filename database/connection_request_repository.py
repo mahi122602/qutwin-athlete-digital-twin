@@ -1,3 +1,4 @@
+from utils.performance import request_cached, invalidate_reads
 from database.connection import get_connection
 
 
@@ -59,6 +60,7 @@ def _already_connected(cur, athlete_id, coach_id):
 # SEND CONNECTION REQUEST
 # ============================================================
 
+@invalidate_reads
 def send_connection_request(
     sender_role,
     sender_id,
@@ -258,6 +260,7 @@ def send_connection_request(
 # GET INCOMING PENDING REQUESTS
 # ============================================================
 
+@request_cached
 def get_incoming_connection_requests(
     recipient_role,
     recipient_id,
@@ -335,6 +338,7 @@ def get_incoming_connection_requests(
 # ACCEPT / REJECT REQUEST
 # ============================================================
 
+@invalidate_reads
 def respond_to_connection_request(
     request_id,
     responder_role,
@@ -525,6 +529,7 @@ def respond_to_connection_request(
 # NOTIFICATIONS
 # ============================================================
 
+@request_cached
 def get_notifications(
     recipient_role,
     recipient_id,
@@ -578,6 +583,7 @@ def get_notifications(
         conn.close()
 
 
+@request_cached
 def get_unread_notification_count(
     recipient_role,
     recipient_id,
@@ -610,6 +616,7 @@ def get_unread_notification_count(
         conn.close()
 
 
+@invalidate_reads
 def mark_notification_read(
     notification_id,
     recipient_role,
@@ -648,6 +655,7 @@ def mark_notification_read(
         conn.close()
 
 
+@invalidate_reads
 def mark_all_notifications_read(
     recipient_role,
     recipient_id,
@@ -688,6 +696,7 @@ def mark_all_notifications_read(
 # SENT REQUEST HISTORY
 # ============================================================
 
+@request_cached
 def get_sent_connection_requests(
     sender_role,
     sender_id,

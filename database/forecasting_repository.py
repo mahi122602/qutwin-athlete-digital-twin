@@ -1,6 +1,8 @@
 from __future__ import annotations
+from utils.performance import request_cached, invalidate_reads
 
 from contextlib import closing
+from functools import lru_cache
 from datetime import date
 import importlib
 import json
@@ -96,6 +98,7 @@ def _discover_profile_table(cursor) -> str | None:
     return row[0]
 
 
+@lru_cache(maxsize=1)
 def ensure_forecasting_schema() -> None:
     with closing(_get_connection()) as connection:
         with connection.cursor() as cursor:
@@ -161,6 +164,7 @@ def ensure_forecasting_schema() -> None:
         connection.commit()
 
 
+@request_cached
 def get_forecasting_profile(athlete_id: str) -> dict[str, Any]:
     with closing(_get_connection()) as connection:
         with connection.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -189,6 +193,7 @@ def get_forecasting_profile(athlete_id: str) -> dict[str, Any]:
             }
 
 
+@invalidate_reads
 def set_athlete_gender(athlete_id: str, gender: str) -> None:
     clean_gender = (gender or "").strip()
     if not clean_gender:
@@ -210,6 +215,7 @@ def set_athlete_gender(athlete_id: str, gender: str) -> None:
         connection.commit()
 
 
+@invalidate_reads
 def set_menstrual_tracking_enabled(athlete_id: str, enabled: bool) -> None:
     with closing(_get_connection()) as connection:
         with connection.cursor() as cursor:
@@ -231,6 +237,7 @@ def set_menstrual_tracking_enabled(athlete_id: str, enabled: bool) -> None:
         connection.commit()
 
 
+@invalidate_reads
 def add_menstrual_cycle(
     athlete_id: str,
     period_start_date: date,
@@ -274,6 +281,7 @@ def add_menstrual_cycle(
         connection.commit()
 
 
+@request_cached
 def get_menstrual_history(athlete_id: str) -> pd.DataFrame:
     with closing(_get_connection()) as connection:
         query = """
@@ -293,6 +301,7 @@ def get_menstrual_history(athlete_id: str) -> pd.DataFrame:
         return pd.read_sql_query(query, connection, params=(athlete_id,))
 
 
+@invalidate_reads
 def replace_menstrual_history(
     athlete_id: str,
     edited_df: pd.DataFrame,
@@ -397,6 +406,7 @@ def replace_menstrual_history(
         connection.commit()
 
 
+@invalidate_reads
 def save_forecast_run(
     athlete_id: str,
     gender_path: str,
