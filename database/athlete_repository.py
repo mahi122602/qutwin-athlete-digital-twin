@@ -1,7 +1,9 @@
+from utils.performance import request_cached, invalidate_reads
 from database.connection import get_connection
 from authentication.password_utils import hash_password, check_password
 
 
+@invalidate_reads
 def register_athlete(athlete_id, name, password, age, height, weight, previous_injury):
     conn = get_connection()
     cur = conn.cursor()
@@ -42,6 +44,7 @@ def login_athlete(athlete_id, password):
     return check_password(password, result[0])
 
 
+@request_cached
 def get_athlete_profile(athlete_id):
     conn = get_connection()
     cur = conn.cursor()
@@ -84,6 +87,7 @@ def get_athlete_profile(athlete_id):
     }
 
 
+@invalidate_reads
 def update_athlete_profile(
     athlete_id,
     name,

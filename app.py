@@ -1,46 +1,105 @@
 import streamlit as st
+from utils.performance import begin_run
+begin_run()
 
 from datetime import datetime, timedelta
 
 from ui.theme import apply_theme
 from authentication.session import init_session, logout_user
 
-from views.athlete_home import (
-    athlete_feature_gallery,
-    _render_athlete_top_navigation,
-)
+def athlete_feature_gallery(*args, **kwargs):
+    from views.athlete_home import athlete_feature_gallery as page
+    return page(*args, **kwargs)
 
-from views.forecasting_page import athlete_forecasting
-from views.model_evaluation_page import model_evaluation_dashboard
+def _render_athlete_top_navigation(*args, **kwargs):
+    from views.athlete_home import _render_athlete_top_navigation as page
+    return page(*args, **kwargs)
 
 
-from views.auth_pages import (
-    login_page,
-    signup_page,
-    forgot_password_page,
-)
+def athlete_forecasting(*args, **kwargs):
+    from views.forecasting_page import athlete_forecasting as page
+    return page(*args, **kwargs)
 
-from views.athlete_pages import (
-    athlete_profile,
-    athlete_dashboard,
-    upload_garmin_data,
-    athlete_predictions,
-    athlete_history,
-    athlete_timeline,
-    athlete_visualisations,
-    athlete_simulation,
-)
+def model_evaluation_dashboard(*args, **kwargs):
+    from views.model_evaluation_page import model_evaluation_dashboard as page
+    return page(*args, **kwargs)
 
-from views.coach_pages import (
-    coach_dashboard,
-    assigned_athletes,
-    coach_intelligence_dashboard,
-    selected_athlete_twin_summary,
-    coach_history,
-    coach_timeline,
-    coach_visualisations,
-    coach_portal,
-)
+
+
+def login_page(*args, **kwargs):
+    from views.auth_pages import login_page as page
+    return page(*args, **kwargs)
+
+def signup_page(*args, **kwargs):
+    from views.auth_pages import signup_page as page
+    return page(*args, **kwargs)
+
+def forgot_password_page(*args, **kwargs):
+    from views.auth_pages import forgot_password_page as page
+    return page(*args, **kwargs)
+
+
+def athlete_profile(*args, **kwargs):
+    from views.athlete_pages import athlete_profile as page
+    return page(*args, **kwargs)
+
+def athlete_dashboard(*args, **kwargs):
+    from views.athlete_pages import athlete_dashboard as page
+    return page(*args, **kwargs)
+
+def upload_garmin_data(*args, **kwargs):
+    from views.athlete_pages import upload_garmin_data as page
+    return page(*args, **kwargs)
+
+def athlete_predictions(*args, **kwargs):
+    from views.athlete_pages import athlete_predictions as page
+    return page(*args, **kwargs)
+
+def athlete_history(*args, **kwargs):
+    from views.athlete_pages import athlete_history as page
+    return page(*args, **kwargs)
+
+def athlete_visualisations(*args, **kwargs):
+    from views.athlete_pages import athlete_visualisations as page
+    return page(*args, **kwargs)
+
+def athlete_simulation(*args, **kwargs):
+    from views.athlete_pages import athlete_simulation as page
+    return page(*args, **kwargs)
+
+
+def coach_dashboard(*args, **kwargs):
+    from views.coach_pages import coach_dashboard as page
+    return page(*args, **kwargs)
+
+def assigned_athletes(*args, **kwargs):
+    from views.coach_pages import assigned_athletes as page
+    return page(*args, **kwargs)
+
+def coach_intelligence_dashboard(*args, **kwargs):
+    from views.coach_pages import coach_intelligence_dashboard as page
+    return page(*args, **kwargs)
+
+def selected_athlete_twin_summary(*args, **kwargs):
+    from views.coach_pages import selected_athlete_twin_summary as page
+    return page(*args, **kwargs)
+
+def coach_history(*args, **kwargs):
+    from views.coach_pages import coach_history as page
+    return page(*args, **kwargs)
+
+def coach_timeline(*args, **kwargs):
+    from views.coach_pages import coach_timeline as page
+    return page(*args, **kwargs)
+
+def coach_visualisations(*args, **kwargs):
+    from views.coach_pages import coach_visualisations as page
+    return page(*args, **kwargs)
+
+def coach_portal(*args, **kwargs):
+    from views.coach_pages import coach_portal as page
+    return page(*args, **kwargs)
+
 
 from database.athlete_repository import (
     get_athlete_profile,
@@ -55,10 +114,14 @@ from database.connection_request_repository import (
     mark_all_notifications_read,
 )
 
-from views.request_pages import (
-    athlete_requests_page,
-    coach_requests_page,
-)
+def athlete_requests_page(*args, **kwargs):
+    from views.request_pages import athlete_requests_page as page
+    return page(*args, **kwargs)
+
+def coach_requests_page(*args, **kwargs):
+    from views.request_pages import coach_requests_page as page
+    return page(*args, **kwargs)
+
 
 # ============================================================
 # STREAMLIT PAGE CONFIGURATION
@@ -356,671 +419,20 @@ def _notification_destination(
 # ATHLETE NOTIFICATIONS PAGE
 # ============================================================
 
-def athlete_notifications_page():
-    """
-    Dedicated Athlete Notifications page.
+def athlete_notifications_page(*args, **kwargs):
+    from views.athlete.notifications import athlete_notifications_page as page
+    return page(*args, **kwargs)
 
-    Shows:
-    - pending coach connection requests
-    - Accept / Reject controls
-    - notifications from the last 14 days
-    - unread/read state
-    """
-
-    athlete_id = str(
-        st.session_state.user_id
-    )
-
-    st.title("Notifications")
-
-    st.caption(
-        "Connection requests, request updates, "
-        "risk alerts, coach recommendations and "
-        "other important updates from the last 14 days."
-    )
-
-    # ========================================================
-    # LOAD NOTIFICATIONS
-    # ========================================================
-
-    try:
-
-        notifications = get_notifications(
-            "Athlete",
-            athlete_id,
-            limit=100,
-        )
-
-        incoming_requests = (
-            get_incoming_connection_requests(
-                "Athlete",
-                athlete_id,
-            )
-        )
-
-        unread_count = (
-            get_unread_notification_count(
-                "Athlete",
-                athlete_id,
-            )
-        )
-
-    except Exception as exc:
-
-        st.error(
-            f"Notifications could not be loaded: {exc}"
-        )
-
-        return
-
-    # ========================================================
-    # PAGE SUMMARY
-    # ========================================================
-
-    summary_col_1, summary_col_2 = (
-        st.columns(2)
-    )
-
-    with summary_col_1:
-
-        st.metric(
-            "Unread Notifications",
-            unread_count,
-        )
-
-    with summary_col_2:
-
-        st.metric(
-            "Pending Coach Requests",
-            len(incoming_requests),
-        )
-
-    if unread_count > 0:
-
-        if st.button(
-            "Mark all notifications as read",
-            key="notification_page_mark_all_read",
-        ):
-
-            try:
-
-                mark_all_notifications_read(
-                    "Athlete",
-                    athlete_id,
-                )
-
-                st.rerun()
-
-            except Exception as exc:
-
-                st.error(
-                    f"Notifications could not be updated: {exc}"
-                )
-
-    st.divider()
-
-    # ========================================================
-    # CONNECTION REQUESTS
-    # ========================================================
-
-    st.subheader(
-        "Coach Connection Requests"
-    )
-
-    if not incoming_requests:
-
-        st.info(
-            "You do not currently have any "
-            "pending coach connection requests."
-        )
-
-    else:
-
-        for request in incoming_requests:
-
-            request_id = (
-                request["request_id"]
-            )
-
-            coach_id = (
-                request["sender_id"]
-            )
-
-            coach_name = (
-                request.get("sender_name")
-                or "Coach"
-            )
-
-            message = (
-                request.get("message")
-                or "No message provided."
-            )
-
-            created_at = (
-                request.get("created_at")
-            )
-
-            with st.container(
-                border=True
-            ):
-
-                title_col, badge_col = (
-                    st.columns(
-                        [4, 1]
-                    )
-                )
-
-                with title_col:
-
-                    st.markdown(
-                        f"### 🤝 {coach_name}"
-                    )
-
-                    st.caption(
-                        f"Coach ID: {coach_id}"
-                    )
-
-                with badge_col:
-
-                    st.warning(
-                        "Pending"
-                    )
-
-                st.write(message)
-
-                if created_at:
-
-                    try:
-
-                        st.caption(
-                            "Received: "
-                            f"{created_at:%d %b %Y, %H:%M}"
-                        )
-
-                    except Exception:
-
-                        st.caption(
-                            f"Received: {created_at}"
-                        )
-
-                accept_col, reject_col = (
-                    st.columns(2)
-                )
-
-                with accept_col:
-
-                    if st.button(
-                        "Accept",
-                        key=(
-                            f"notification_accept_"
-                            f"{request_id}"
-                        ),
-                        type="primary",
-                        use_container_width=True,
-                    ):
-
-                        try:
-
-                            respond_to_connection_request(
-                                request_id=request_id,
-                                responder_role="Athlete",
-                                responder_id=athlete_id,
-                                decision="Accepted",
-                            )
-
-                            # Mark original request
-                            # notification as read.
-                            for notification in notifications:
-
-                                if (
-                                    notification.get(
-                                        "request_id"
-                                    )
-                                    == request_id
-                                    and
-                                    notification.get(
-                                        "notification_type"
-                                    )
-                                    == "Connection Request"
-                                ):
-
-                                    mark_notification_read(
-                                        notification[
-                                            "notification_id"
-                                        ],
-                                        "Athlete",
-                                        athlete_id,
-                                    )
-
-                            st.success(
-                                f"You are now connected "
-                                f"with Coach {coach_id}."
-                            )
-
-                            st.rerun()
-
-                        except Exception as exc:
-
-                            st.error(
-                                f"Request could not be accepted: {exc}"
-                            )
-
-                with reject_col:
-
-                    if st.button(
-                        "Reject",
-                        key=(
-                            f"notification_reject_"
-                            f"{request_id}"
-                        ),
-                        use_container_width=True,
-                    ):
-
-                        try:
-
-                            respond_to_connection_request(
-                                request_id=request_id,
-                                responder_role="Athlete",
-                                responder_id=athlete_id,
-                                decision="Rejected",
-                            )
-
-                            for notification in notifications:
-
-                                if (
-                                    notification.get(
-                                        "request_id"
-                                    )
-                                    == request_id
-                                    and
-                                    notification.get(
-                                        "notification_type"
-                                    )
-                                    == "Connection Request"
-                                ):
-
-                                    mark_notification_read(
-                                        notification[
-                                            "notification_id"
-                                        ],
-                                        "Athlete",
-                                        athlete_id,
-                                    )
-
-                            st.rerun()
-
-                        except Exception as exc:
-
-                            st.error(
-                                f"Request could not be rejected: {exc}"
-                            )
-
-    # ========================================================
-    # LAST 14 DAYS
-    # ========================================================
-
-    st.divider()
-
-    st.subheader(
-        "Last 14 Days"
-    )
-
-    cutoff = (
-        datetime.now()
-        - timedelta(days=14)
-    )
-
-    recent_notifications = []
-
-    for notification in notifications:
-
-        created_at = (
-            notification.get(
-                "created_at"
-            )
-        )
-
-        if created_at is None:
-
-            recent_notifications.append(
-                notification
-            )
-
-            continue
-
-        try:
-
-            if created_at >= cutoff:
-
-                recent_notifications.append(
-                    notification
-                )
-
-        except TypeError:
-
-            recent_notifications.append(
-                notification
-            )
-
-    if not recent_notifications:
-
-        st.info(
-            "No notifications were received "
-            "during the last 14 days."
-        )
-
-        return
-
-    # ========================================================
-    # NOTIFICATION CARDS
-    # ========================================================
-
-    for notification in recent_notifications:
-
-        notification_id = (
-            notification[
-                "notification_id"
-            ]
-        )
-
-        notification_type = (
-            notification.get(
-                "notification_type",
-                "Notification",
-            )
-        )
-
-        notification_message = (
-            notification.get(
-                "message"
-            )
-            or "Notification update."
-        )
-
-        is_read = bool(
-            notification.get(
-                "is_read",
-                False,
-            )
-        )
-
-        created_at = (
-            notification.get(
-                "created_at"
-            )
-        )
-
-        icon = _notification_icon(
-            notification_type
-        )
-
-        destination = (
-            _notification_destination(
-                notification_type
-            )
-        )
-
-        with st.container(
-            border=True
-        ):
-
-            title_col, status_col = (
-                st.columns(
-                    [4, 1]
-                )
-            )
-
-            with title_col:
-
-                st.markdown(
-                    f"### {icon} "
-                    f"{notification_type}"
-                )
-
-            with status_col:
-
-                if is_read:
-
-                    st.caption(
-                        "Read"
-                    )
-
-                else:
-
-                    st.info(
-                        "New"
-                    )
-
-            st.write(
-                notification_message
-            )
-
-            if created_at:
-
-                try:
-
-                    st.caption(
-                        f"{created_at:%d %b %Y, %H:%M}"
-                    )
-
-                except Exception:
-
-                    st.caption(
-                        str(created_at)
-                    )
-
-            action_col_1, action_col_2 = (
-                st.columns(
-                    [1, 1]
-                )
-            )
-
-            # -----------------------------------------------
-            # MARK READ
-            # -----------------------------------------------
-
-            with action_col_1:
-
-                if not is_read:
-
-                    if st.button(
-                        "Mark as read",
-                        key=(
-                            f"mark_notification_"
-                            f"{notification_id}"
-                        ),
-                        use_container_width=True,
-                    ):
-
-                        try:
-
-                            mark_notification_read(
-                                notification_id,
-                                "Athlete",
-                                athlete_id,
-                            )
-
-                            st.rerun()
-
-                        except Exception as exc:
-
-                            st.error(
-                                f"Notification could not "
-                                f"be updated: {exc}"
-                            )
-
-            # -----------------------------------------------
-            # OPEN RELATED PAGE
-            # -----------------------------------------------
-
-            with action_col_2:
-
-                if destination:
-
-                    if st.button(
-                        "Open related page →",
-                        key=(
-                            f"open_notification_"
-                            f"{notification_id}"
-                        ),
-                        use_container_width=True,
-                    ):
-
-                        if not is_read:
-
-                            try:
-
-                                mark_notification_read(
-                                    notification_id,
-                                    "Athlete",
-                                    athlete_id,
-                                )
-
-                            except Exception:
-
-                                pass
-
-                        st.session_state.current_page = (
-                            destination
-                        )
-
-                        st.rerun()
 
 
 # ============================================================
 # ATHLETE SETTINGS PAGE
 # ============================================================
 
-def athlete_settings_page():
-    """
-    Basic Athlete account/settings screen.
-    """
+def athlete_settings_page(*args, **kwargs):
+    from views.athlete.settings import athlete_settings_page as page
+    return page(*args, **kwargs)
 
-    athlete_id = str(
-        st.session_state.user_id
-    )
-
-    st.title(
-        "Settings"
-    )
-
-    st.caption(
-        "Manage your account and Athlete Dashboard preferences."
-    )
-
-    account_tab, notifications_tab, privacy_tab = (
-        st.tabs(
-            [
-                "Account",
-                "Notifications",
-                "Privacy & Security",
-            ]
-        )
-    )
-
-    # ========================================================
-    # ACCOUNT
-    # ========================================================
-
-    with account_tab:
-
-        st.subheader(
-            "Account"
-        )
-
-        st.write(
-            f"**Athlete ID:** {athlete_id}"
-        )
-
-        st.write(
-            "**Role:** Athlete"
-        )
-
-        st.caption(
-            "Profile information can be edited "
-            "from your Athlete Profile page."
-        )
-
-        if st.button(
-            "Open Profile",
-            key="settings_open_profile",
-            type="primary",
-        ):
-
-            st.session_state.current_page = (
-                "Profile"
-            )
-
-            st.rerun()
-
-    # ========================================================
-    # NOTIFICATION SETTINGS
-    # ========================================================
-
-    with notifications_tab:
-
-        st.subheader(
-            "Notification Preferences"
-        )
-
-        st.caption(
-            "These preferences currently apply "
-            "to this Streamlit session."
-        )
-
-        st.toggle(
-            "Connection request notifications",
-            value=True,
-            key="setting_connection_notifications",
-        )
-
-        st.toggle(
-            "Coach recommendation notifications",
-            value=True,
-            key="setting_coach_notifications",
-        )
-
-        st.toggle(
-            "Injury risk alerts",
-            value=True,
-            key="setting_risk_notifications",
-        )
-
-        st.toggle(
-            "Digital Twin status updates",
-            value=True,
-            key="setting_twin_notifications",
-        )
-
-    # ========================================================
-    # PRIVACY / SECURITY
-    # ========================================================
-
-    with privacy_tab:
-
-        st.subheader(
-            "Privacy & Security"
-        )
-
-        st.write(
-            "Your Athlete account is authenticated "
-            "before access to your Digital Twin data."
-        )
-
-        st.caption(
-            "Use Logout whenever you finish using "
-            "QUTwin on a shared device."
-        )
-
-        st.divider()
-
-        if st.button(
-            "Logout",
-            key="settings_logout",
-            type="primary",
-        ):
-
-            perform_logout()
 
 
 # ============================================================
@@ -1060,9 +472,6 @@ def athlete_navigation():
 
         "Digital Twin History":
             athlete_history,
-
-        "Digital Twin Timeline":
-            athlete_timeline,
 
         "Visualisations / Graphs":
             athlete_visualisations,
@@ -1125,15 +534,16 @@ def athlete_navigation():
 
     render_athlete_global_navigation()
 
-    show_athlete_page_controls()
+    with st.container(key="athlete_page_content"):
+        show_athlete_page_controls()
 
-    selected_page_function = (
-        athlete_pages[
-            current_page
-        ]
-    )
+        selected_page_function = (
+            athlete_pages[
+                current_page
+            ]
+        )
 
-    selected_page_function()
+        selected_page_function()
 
 
 # ============================================================

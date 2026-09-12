@@ -1,4 +1,4 @@
-import joblib
+from prediction.model_store import load_model
 import pandas as pd
 
 MODEL_DIR = "models"
@@ -7,8 +7,8 @@ FATIGUE_MODEL_PATH = f"{MODEL_DIR}/fatigue_rf_model.pkl"
 
 
 def explain_fatigue_prediction(row, top_n=5):
-    model = joblib.load(FATIGUE_MODEL_PATH)
-    features = joblib.load(FEATURES_PATH)
+    model = load_model(FATIGUE_MODEL_PATH)
+    features = load_model(FEATURES_PATH)
 
     feature_importance = model.feature_importances_
 

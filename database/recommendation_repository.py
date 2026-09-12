@@ -1,7 +1,9 @@
+from utils.performance import request_cached, invalidate_reads
 from database.connection import get_connection
 import pandas as pd
 
 
+@invalidate_reads
 def save_coach_recommendation(
     coach_id,
     athlete_id,
@@ -39,6 +41,7 @@ def save_coach_recommendation(
     conn.close()
 
 
+@request_cached
 def get_latest_coach_recommendation(athlete_id):
     conn = get_connection()
 
@@ -66,6 +69,7 @@ def get_latest_coach_recommendation(athlete_id):
     return df.iloc[0].to_dict()
 
 
+@request_cached
 def get_coach_recommendation_history(athlete_id):
     conn = get_connection()
 

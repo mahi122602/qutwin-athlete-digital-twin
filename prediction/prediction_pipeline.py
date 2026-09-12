@@ -1,4 +1,4 @@
-import joblib
+from prediction.model_store import load_model
 import pandas as pd
 
 MODEL_DIR = "models"
@@ -28,7 +28,7 @@ def prepare_model_features(df):
     if "hydration_score" not in df.columns:
         df["hydration_score"] = df["hydration_level"].apply(hydration_to_score)
 
-    model_features = joblib.load(FEATURES_PATH)
+    model_features = load_model(FEATURES_PATH)
 
     for col in model_features:
         if col not in df.columns:
@@ -40,9 +40,9 @@ def prepare_model_features(df):
 def run_prediction_pipeline(df):
     df = df.copy()
 
-    fatigue_model = joblib.load(FATIGUE_MODEL_PATH)
-    injury_model = joblib.load(INJURY_MODEL_PATH)
-    injury_encoder = joblib.load(INJURY_ENCODER_PATH)
+    fatigue_model = load_model(FATIGUE_MODEL_PATH)
+    injury_model = load_model(INJURY_MODEL_PATH)
+    injury_encoder = load_model(INJURY_ENCODER_PATH)
 
     X = prepare_model_features(df)
 

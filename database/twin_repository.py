@@ -1,7 +1,9 @@
+from utils.performance import request_cached, invalidate_reads
 from database.connection import get_connection
 import pandas as pd
 
 
+@invalidate_reads
 def save_uploaded_file(athlete_id, filename, file_type, rows_extracted):
     conn = get_connection()
     cur = conn.cursor()
@@ -22,6 +24,7 @@ def save_uploaded_file(athlete_id, filename, file_type, rows_extracted):
     return upload_id
 
 
+@request_cached
 def get_latest_twin_state(athlete_id):
     conn = get_connection()
 
@@ -41,6 +44,7 @@ def get_latest_twin_state(athlete_id):
     return df.iloc[0].to_dict()
 
 
+@invalidate_reads
 def save_digital_twin_states(athlete_id, upload_id, df):
     conn = get_connection()
     cur = conn.cursor()
@@ -150,6 +154,7 @@ def save_digital_twin_states(athlete_id, upload_id, df):
     conn.close()
 
 
+@request_cached
 def get_athlete_twin_history(athlete_id):
     conn = get_connection()
 
