@@ -1,13 +1,9 @@
+from prediction.event_context import attach_events, describe_event_context
 import streamlit as st
 import pandas as pd
-from ingestion.auto_loader import load_uploaded_file
-from digital_twin.state_engine import build_digital_twin_state
-from digital_twin.twin_engine import build_twin_snapshot
-from digital_twin.twin_object import AthleteTwin
-from digital_twin.bayesian_engine import apply_bayesian_fatigue_update
-from prediction.prediction_pipeline import run_prediction_pipeline
-from digital_twin.state_space_engine import apply_state_space_model
-from database.twin_repository import get_latest_twin_state
+from ingestion.workflow_loader import load_uploaded_file
+from prediction.upload_processing import process_upload, missing_inputs
+from views.athlete.import_review import review_import
 
 def upload_garmin_data():
     """Three-section activity uploader; route name retained for app.py."""
@@ -16,7 +12,7 @@ def upload_garmin_data():
     from database.activity_upload_repository import save_activity_upload
 
     athlete_id = str(st.session_state.user_id)
-    prefix = f"activity_upload_{athlete_id}_"
+    prefix = f"activity_upload_adaptive_v5_{athlete_id}_"
     generation = st.session_state.get(prefix + "generation", 0)
     cache = st.session_state.setdefault(prefix + "files", {})
     outcomes = st.session_state.setdefault(prefix + "outcomes", {})
@@ -107,10 +103,10 @@ def upload_garmin_data():
 
         with st.container(key="au_files"):
             st.html('<div class="au-section-heading"><span>02</span>Add Activity Files</div>')
-            files = st.file_uploader("Drag and drop your files here", type=["zip", "csv", "xlsx", "xls", "fit", "tcx", "gpx", "xml", "json"], accept_multiple_files=True, key=prefix + f"uploader_{generation}", disabled=not selected, label_visibility="collapsed")
+            files = st.file_uploader("Drag and drop your files here", type=["zip", "csv", "xlsx", "xls", "fit", "tcx", "gpx", "xml", "json", "tsv", "txt", "jsonl"], accept_multiple_files=True, key=prefix + f"uploader_{generation}", disabled=False, label_visibility="collapsed")
             st.caption("FIT, CSV, GPX, TCX, XLSX, XLS, ZIP, XML and JSON. Files are checked by the existing importer before they can be saved.")
             if not selected:
-                st.info("Select at least one event to add files.")
+                st.info("Select one or more events, then assign the uploaded records to their event.")
             entries = []
             seen = set()
             for uploaded in files or []:
@@ -121,7 +117,7 @@ def upload_garmin_data():
                 seen.add(digest)
                 entry = cache.get(digest)
                 if entry is None:
-                    entry = {"name": uploaded.name, "size": uploaded.size}
+                    entry = {"name": uploaded.name, "size": uploaded.size, "bytes": uploaded.getvalue()}
                     try:
                         uploaded.seek(0)
                         with st.spinner(f"Checking {uploaded.name}…"):
@@ -147,6 +143,13 @@ def upload_garmin_data():
                     st.html(f'<div class="au-file-title">{esc(entry["name"])}</div>')
                     st.caption(f'{entry["size"] / 1024:,.1f} KB')
                 saved = outcomes.get(digest, {}).get("status") in ("saved", "already_saved")
+                if saved and st.button("Correct this saved file",key=prefix+"correct_"+digest):
+                    outcomes.pop(digest,None)
+                    st.session_state[prefix+"replace_"+digest]=True
+                    st.rerun()
+                review_import(entry,prefix+digest+"_"+str(entry.get("revision",0))+"_",saved)
+                entry["correct_existing"]=st.checkbox("Update an existing observations-only upload with these corrections",key=prefix+"replace_"+digest,disabled=saved,
+                    help="Preserves the saved date and History entry. Blocked if predictions or an AI/coach review already exist.")
                 assignments = []
                 key = prefix + "assign_" + digest
                 choices = ["Select event…"] + selected + ["Multiple events — assign rows"]
@@ -160,17 +163,41 @@ def upload_garmin_data():
                     st.error(f'{entry["name"]}: {entry["error"]}')
                     entry["ready"] = False
                     continue
-                df = entry["df"]
+                df = entry.setdefault("original_df", entry["df"].copy()).copy()
+                gaps = missing_inputs(df)
+                if gaps or df["timestamp"].isna().any():
+                    from ui.prediction_guidance import LABELS
+                    st.caption("Your file can be saved. Measurements not supplied: " + ", ".join(LABELS.get(k,k.replace("_"," ")) for k in gaps) + ". Add only known values below; estimates may be limited when measurements are missing.")
+                    with st.expander("Add missing measurements (optional)"):
+                        st.caption("Enter only known measurements for each activity. Leave unknown values blank. Units: sleep/recovery in hours, temperature in °C, humidity in %, previous injury 0 or 1. Activity timestamps use UTC.")
+                        edit = df.reindex(columns=["timestamp"] + list(dict.fromkeys(gaps))).copy()
+                        if "hydration_level" in edit:
+                            edit["hydration_level"] = edit["hydration_level"].astype(object).where(edit["hydration_level"].notna(), None)
+                        for field in gaps:
+                            if field != "hydration_level":edit[field]=pd.to_numeric(edit[field],errors="coerce").astype(float)
+                        edit = st.data_editor(edit, key=prefix + "measurements_" + digest + str(entry.get("revision",0)),
+                            hide_index=True, use_container_width=True,
+                            column_config={"hydration_level": st.column_config.SelectboxColumn(options=["Low", "Medium", "High"]),
+                                **{k: st.column_config.NumberColumn(k) for k in gaps if k != "hydration_level"}})
+                        updated = df.copy()
+                        for field in edit.columns:
+                            updated[field] = edit[field]
+                        entry["df"] = updated
+                        df = updated
                 if assigned == "Multiple events — assign rows" and not saved:
                     with st.expander("Review activities and assign events", expanded=True):
                         st.caption("Assign each extracted record once. These are the records produced by your file importer.")
                         records = pd.DataFrame({"Record": range(1, len(df) + 1), "Timestamp": [str(v) for v in df["timestamp"]] if "timestamp" in df else [""] * len(df), "Event": [None] * len(df)})
-                        edited = st.data_editor(records, hide_index=True, use_container_width=True, key=prefix + "rows_" + digest + "_" + hashlib.sha256('|'.join(selected).encode()).hexdigest()[:12], disabled=["Record", "Timestamp"], column_config={"Event": st.column_config.SelectboxColumn("Event", options=selected, required=True)})
+                        edited = st.data_editor(records, hide_index=True, use_container_width=True, key=prefix + "rows_" + digest + str(entry.get("revision",0)) + "_" + hashlib.sha256('|'.join(selected).encode()).hexdigest()[:12], disabled=["Record", "Timestamp"], column_config={"Event": st.column_config.SelectboxColumn("Event", options=selected, required=True)})
                         assignments = [{"record": int(row["Record"]), "timestamp": row["Timestamp"], "event": row["Event"]} for _, row in edited.iterrows()]
                 elif assigned in selected:
                     assignments = [{"record": i + 1, "timestamp": str(df.iloc[i].get("timestamp", "")), "event": assigned} for i in range(len(df))]
                 entry["assignments"] = assignments
-                entry["ready"] = saved or bool(assignments) and all(a["event"] in selected for a in assignments)
+                from ingestion.adaptive_table import FIELDS
+                has_measurements=df.reindex(columns=[k for k in FIELDS if k!="timestamp"]).notna().any().any()
+                entry["ready"] = saved or bool(has_measurements) and bool(assignments) and all(a["event"] in selected for a in assignments)
+                if not has_measurements:
+                    st.warning("No usable measurements mapped yet. Review columns and units above, or export a supported activity table.")
                 if not entry["ready"]:
                     st.warning("Assign every record to one of your selected events before uploading.")
                 elif not saved:
@@ -197,7 +224,7 @@ def upload_garmin_data():
                 st.caption("Select events and add files to enable uploading.")
             upload_col, clear_col, _ = st.columns([2, 1, 3])
             with upload_col:
-                run = st.button("Upload and process data", type="primary", use_container_width=True, key=prefix + "process", disabled=not selected or not pending or bool(needs))
+                run = st.button("Upload and proceed", type="primary", use_container_width=True, key=prefix + "process", disabled=not pending or bool(needs))
             with clear_col:
                 st.button("Clear files", key=prefix + "clear_files", on_click=clear_files, disabled=not entries, use_container_width=True)
             if run:
@@ -205,30 +232,20 @@ def upload_garmin_data():
                 for number, entry in enumerate(pending, 1):
                     try:
                         progress.progress((number-1)/len(pending), text=f'Processing {entry["name"]}…')
-                        model_ready_df = build_digital_twin_state(entry["df"].copy())
-                        model_ready_df = build_twin_snapshot(model_ready_df)
-                        model_ready_df = run_prediction_pipeline(model_ready_df)
-                        model_ready_df = apply_state_space_model(model_ready_df)
-                        model_ready_df["health_index"] = (model_ready_df["readiness_score"] * 0.50 + (100 - model_ready_df["fatigue_score"]) * 0.30 + model_ready_df["twin_score"] * 0.20).round(1)
-                        previous_state = get_latest_twin_state(st.session_state.user_id)
-                        model_ready_df = apply_bayesian_fatigue_update(model_ready_df, previous_state)
-                        athlete_twin = AthleteTwin(athlete_id=st.session_state.user_id, current_state=model_ready_df, previous_state=previous_state)
-                        model_ready_df = athlete_twin.apply_memory()
-                        if model_ready_df is None or model_ready_df.empty:
-                            raise ValueError("Processing produced no Digital Twin records.")
-                        detection = entry["detection"]
-                        detected_type = f'{detection.get("source", "Unknown")} {str(detection.get("file_type", "unknown")).upper()}'
-                        outcomes[entry["digest"]] = save_activity_upload(st.session_state.user_id, entry["name"], detected_type, model_ready_df, entry["digest"], entry["assignments"])
+                        outcomes[entry["digest"]] = process_upload(st.session_state.user_id, entry, selected)
                     except Exception as exc:
                         outcomes[entry["digest"]] = {"status": "error", "message": f'Upload failed for {entry["name"]}: {exc}. Correct the issue and retry; successful files will be skipped.'}
                     progress.progress(number/len(pending), text=f"Processed {number} of {len(pending)} files")
+                if all(outcomes.get(e["digest"], {}).get("status") in ("saved", "already_saved") for e in entries):
+                    st.session_state.current_page = "Predictions & Coach Recommendations"
+                    st.session_state.workflow_generate_ids = [outcomes[e["digest"]]["id"] for e in entries]
                 st.rerun()
             if entries and not pending:
                 st.success("Your activity data has been saved. Previously saved identical files were not duplicated.")
                 c1, c2 = st.columns(2)
                 with c1:
-                    if st.button("View Digital Twin", key=prefix + "view"):
-                        st.session_state.current_page = "Digital Twin Dashboard"
+                    if st.button("View History", key=prefix + "view"):
+                        st.session_state.current_page = "Digital Twin History"
                         st.rerun()
                 with c2:
                     st.button("Upload more data", key=prefix + "more", on_click=clear_files)

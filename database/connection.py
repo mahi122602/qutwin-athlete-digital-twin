@@ -1,5 +1,5 @@
 import os
-import psycopg2
+from database.pool import connect
 
 
 def get_connection():
@@ -22,7 +22,7 @@ def get_connection():
     database_url = os.getenv("DATABASE_URL")
 
     if database_url:
-        return psycopg2.connect(database_url)
+        return connect(database_url)
 
 
     # -----------------------------------------
@@ -35,7 +35,7 @@ def get_connection():
     db_port = os.getenv("DB_PORT", "5432")
 
     if db_host and db_name and db_user and db_password:
-        return psycopg2.connect(
+        return connect(
             host=db_host,
             database=db_name,
             user=db_user,
@@ -50,7 +50,7 @@ def get_connection():
     try:
         from config import DB_CONFIG
 
-        return psycopg2.connect(**DB_CONFIG)
+        return connect(**DB_CONFIG)
 
     except ImportError:
         raise RuntimeError(

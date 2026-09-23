@@ -1,0 +1,9 @@
+Stop Streamlit. Extract into athlete_digital_twin_github, the folder containing app.py.
+Replace views/athlete/history.py and add database/upload_history_repository.py.
+Restart Streamlit, upload a file successfully, then open History.
+
+History is now a file-upload log: one row per saved file, sorted by upload timestamp. It reads the database each time the page runs, so committed uploads appear immediately. No per-day rows or calendar gaps are generated. Existing uploaded_files and Samsung qutwin_daily_uploads metadata supply the entries. Files that were already present before this patch also appear if their upload metadata was saved. Prediction-only rows without upload metadata are not separate uploads and are not listed.
+
+For exercise files containing many prediction records, the table uses the latest activity record in that file as the displayed score summary. The date/time at the beginning of the row is the upload timestamp, not that activity timestamp. Samsung summary files show a single saved row with dashes for uncomputed scores. Underlying observations and prediction records remain unchanged in the database. Identical files rejected as duplicates do not add entries. No migration is required.
+
+After local verification, commit/push and merge to main for the deployed app. The app database connection and secrets stay as configured. Local mocked repository and formatting tests are used; live Supabase behavior still needs verification.

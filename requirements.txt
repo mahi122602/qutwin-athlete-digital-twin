@@ -1,7 +1,7 @@
 streamlit
 pandas
 numpy
-scikit-learn
+scikit-learn==1.6.1
 joblib
 psycopg2-binary
 sqlalchemy
@@ -11,3 +11,8 @@ plotly
 matplotlib
 bcrypt
 statsmodels
+
+defusedxml
+xlrd
+
+catboost==1.2.8

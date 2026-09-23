@@ -186,6 +186,9 @@ def _detect_zip(uploaded_file):
 
 def _detect_csv(uploaded_file):
     data = uploaded_file.getvalue()
+    from ingestion.samsung_csv_reader import has_samsung_metadata
+    if has_samsung_metadata(data):
+        return _result("csv", "Samsung Health", "Health / Activity", "High", "Samsung")
 
     try:
         df = pd.read_csv(io.BytesIO(data), nrows=25)

@@ -1,5 +1,4 @@
 import streamlit as st
-from database.recommendation_repository import save_coach_recommendation
 from database.twin_repository import get_athlete_twin_history
 from digital_twin.forecasting_engine import forecast_metric, generate_forecast_summary
 from views.coach.shared import _format_number, _get_risk_df, _render_page_heading
@@ -83,82 +82,11 @@ def selected_athlete_twin_summary():
         ),
     )
 
-    st.success(
-        "AI Recommendation"
-    )
-
-    recommendation = (
-        selected_row.get(
-            "Recommendation"
-        )
-        or "No recommendation available."
-    )
-
-    st.info(
-        recommendation
-    )
-
-    st.divider()
-
-    st.subheader(
-        "Coach Review & Approval"
-    )
-
-    coach_note = st.text_area(
-        "Edit or write coach recommendation",
-        value=str(
-            recommendation
-        ),
-        height=140,
-        key="coach_summary_note",
-    )
-
-    approval_status = st.radio(
-        "Approval Decision",
-        [
-            "Approved",
-            "Rejected",
-        ],
-        horizontal=True,
-        key="coach_summary_approval",
-    )
-
-    if st.button(
-        "Save Coach Decision",
-        key="coach_save_decision",
-        type="primary",
-    ):
-        if not coach_note.strip():
-            st.warning(
-                "Please write a recommendation "
-                "before saving."
-            )
-        else:
-            save_coach_recommendation(
-                coach_id=(
-                    st.session_state.user_id
-                ),
-                athlete_id=selected_athlete,
-                ai_recommendation=str(
-                    recommendation
-                ),
-                coach_comment=coach_note,
-                approval_status=(
-                    approval_status
-                ),
-            )
-
-            if approval_status == "Approved":
-                st.success(
-                    "Recommendation approved "
-                    "and saved."
-                )
-            else:
-                st.warning(
-                    "Recommendation rejected "
-                    "and saved."
-                )
-
+    st.subheader("Coach Review & Approval")
+    st.caption("AI drafts and decisions are linked to each uploaded file in Recommendation Reviews.")
+    if st.button("Open Recommendation Reviews", key="summary_open_reviews", type="primary"):
+        st.session_state.current_page = "Recommendation Reviews"
+        st.rerun()
     st.divider()
 
     st.subheader(

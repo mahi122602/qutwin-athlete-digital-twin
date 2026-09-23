@@ -46,7 +46,8 @@ def _insert_states(cur, athlete_id, upload_id, df):
                 bayesian_fatigue_probability,
                 prediction_confidence,
                 digital_twin_state,
-                user_status_message
+                user_status_message,
+                event_type
             )
             VALUES (
                 %s,%s,%s,
@@ -61,7 +62,7 @@ def _insert_states(cur, athlete_id, upload_id, df):
                 %s,%s,%s,
                 %s,
                 %s,
-                %s,%s
+                %s,%s,%s
             );
         """, (
             athlete_id,
@@ -103,6 +104,7 @@ def _insert_states(cur, athlete_id, upload_id, df):
             row.get("prediction_confidence"),
             row.get("digital_twin_state"),
             row.get("user_status_message"),
+            row.get("event_type"),
         ))
 
 
@@ -117,6 +119,7 @@ def save_activity_upload(athlete_id, filename, file_type, df, content_hash, assi
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            cur.execute("ALTER TABLE digital_athlete_state ADD COLUMN IF NOT EXISTS event_type TEXT")
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS qutwin_upload_events (
                     athlete_id TEXT NOT NULL,

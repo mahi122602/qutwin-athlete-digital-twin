@@ -31,48 +31,8 @@ def _clean_columns(df):
 
 
 def _read_csv_bytes(data):
-    """
-    Samsung Health CSV exports can contain slightly different structures.
-    Try a few safe CSV-reading strategies.
-    """
-
-    attempts = [
-        {"encoding": "utf-8-sig"},
-        {"encoding": "utf-8"},
-        {"encoding": "latin1"},
-    ]
-
-    for options in attempts:
-        try:
-            df = pd.read_csv(
-                io.BytesIO(data),
-                low_memory=False,
-                **options,
-            )
-
-            if not df.empty:
-                return _clean_columns(df)
-
-        except Exception:
-            continue
-
-    # Some exports may contain an extra line before the real header.
-    for options in attempts:
-        try:
-            df = pd.read_csv(
-                io.BytesIO(data),
-                skiprows=1,
-                low_memory=False,
-                **options,
-            )
-
-            if not df.empty:
-                return _clean_columns(df)
-
-        except Exception:
-            continue
-
-    return pd.DataFrame()
+    from ingestion.samsung_csv_reader import read_samsung_csv
+    return _clean_columns(read_samsung_csv(data))
 
 
 def _find_column(df, keywords):

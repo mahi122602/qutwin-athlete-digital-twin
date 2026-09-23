@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 from digital_twin.simulation_engine import simulate_scenario
 from database.twin_repository import get_athlete_twin_history
 
@@ -34,6 +35,13 @@ def athlete_simulation():
         .iloc[-1]
         .to_dict()
     )
+
+    required=('sleep_hours','training_load','recovery_time','fatigue_score','readiness_score')
+    if any(pd.isna(latest_state.get(k)) for k in required):
+        st.info('This upload does not contain the measurements needed for the existing what-if simulation. Add known sleep, recovery and training measurements; your upload analysis is available on Prediction.')
+        return
+    if latest_state.get('prediction_status')=='research_estimate':
+        st.info('What-if values are exploratory calculations based on a research estimate, not validated training outcomes.')
 
     sleep_change = st.slider(
         "Change Sleep Hours",

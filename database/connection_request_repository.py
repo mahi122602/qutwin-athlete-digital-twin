@@ -552,7 +552,7 @@ def get_notifications(
                 is_read,
                 created_at
             FROM notifications
-            WHERE recipient_role = %s
+            WHERE LOWER(recipient_role) = LOWER(%s)
               AND recipient_id = %s
             ORDER BY created_at DESC
             LIMIT %s;
@@ -599,7 +599,7 @@ def get_unread_notification_count(
             """
             SELECT COUNT(*)
             FROM notifications
-            WHERE recipient_role = %s
+            WHERE LOWER(recipient_role) = LOWER(%s)
               AND recipient_id = %s
               AND is_read = FALSE;
             """,
@@ -634,7 +634,7 @@ def mark_notification_read(
             UPDATE notifications
             SET is_read = TRUE
             WHERE notification_id = %s
-              AND recipient_role = %s
+              AND LOWER(recipient_role) = LOWER(%s)
               AND recipient_id = %s;
             """,
             (
@@ -671,7 +671,7 @@ def mark_all_notifications_read(
             """
             UPDATE notifications
             SET is_read = TRUE
-            WHERE recipient_role = %s
+            WHERE LOWER(recipient_role) = LOWER(%s)
               AND recipient_id = %s
               AND is_read = FALSE;
             """,

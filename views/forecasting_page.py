@@ -938,6 +938,10 @@ def athlete_forecasting() -> None:
 
     try:
         history_df = get_athlete_twin_history(str(athlete_id))
+        from research_prediction.history import comparable_history
+        history_df = comparable_history(history_df)
+        if not history_df.empty and 'model_version' in history_df and history_df.model_version.notna().any():
+            st.info('Forecast input uses dated research estimates with the same model version, input tier and event. These projections have not been externally validated.')
     except Exception as exc:
         st.error(f"Digital Twin history could not be loaded: {exc}")
         return

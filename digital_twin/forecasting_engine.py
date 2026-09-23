@@ -2,7 +2,8 @@ import pandas as pd
 
 
 def forecast_metric(history_df, metric, days=7):
-    df = history_df.copy()
+    from research_prediction.history import comparable_history
+    df = comparable_history(history_df)
 
     if df is None or df.empty or metric not in df.columns:
         return pd.DataFrame()
@@ -11,14 +12,16 @@ def forecast_metric(history_df, metric, days=7):
     df = df.sort_values("timestamp")
 
     df[metric] = pd.to_numeric(df[metric], errors="coerce")
-    df = df.dropna(subset=[metric])
+    df = df.dropna(subset=[metric, "timestamp"]).drop_duplicates("timestamp",keep="last")
 
     if len(df) < 2:
         return pd.DataFrame()
 
     last_value = df[metric].iloc[-1]
     previous_value = df[metric].iloc[-2]
-    daily_change = last_value - previous_value
+    elapsed_days = (df["timestamp"].iloc[-1] - df["timestamp"].iloc[-2]).total_seconds()/86400
+    if elapsed_days <= 0:return pd.DataFrame()
+    daily_change = (last_value - previous_value)/elapsed_days
 
     future_rows = []
 
@@ -58,6 +61,6 @@ def generate_forecast_summary(fatigue_forecast, readiness_forecast):
         return "Forecast indicates fatigue may increase. Monitor training load, sleep and recovery closely."
 
     if final_readiness is not None and final_readiness >= 70:
-        return "Forecast indicates the athlete is likely to remain in a suitable training condition."
+        return "The simple trend projection has higher readiness values. This is not training clearance; review with the coach."
 
     return "Forecast is stable. Continue monitoring future Digital Twin states."

@@ -1,0 +1,19 @@
+DAILY SUMMARY UPLOAD — INSTALL
+
+This patch implements storage, preview, daily history and step-count trends. It includes the earlier Samsung CSV parsing correction. It does not change Bayesian, state-space, forecasting or prediction calculations. Summary-only uploads bypass those pipelines and keep missing measurements unavailable.
+
+1. Stop Streamlit. Back up matching files in your GitHub-connected project.
+2. Extract this ZIP into athlete_digital_twin_github, the folder containing app.py. Replace matching files and keep the new folders/files.
+3. Restart: python -m streamlit run app.py
+4. Open Upload Data, add the Samsung CSV, and click Upload and process data. Daily summaries do not require a race event. The changed cache key automatically avoids old cached parsing errors.
+5. Click View History. Open Daily activity history and trends to see observations and steps over time.
+6. Commit/push the changed files and merge to main to apply to the deployed app.
+
+DATABASE
+Two additive tables and an index are created automatically during the first save. Existing tables/data are not altered. Your backend database role needs CREATE privileges and access to the new tables. If it lacks those privileges, the database administrator can run database/migrations/003_daily_activity_summaries.sql and grant the backend role appropriate access. RLS is enabled on these new tables to block anonymous Supabase API access; the direct backend role must own the tables or have an appropriate policy/bypass privilege. Do not add a public allow-all policy.
+
+BEHAVIOR
+Same-file uploads are skipped per athlete, including after restart. Overlapping exports use source datauuid keys when present and preserve the first saved record. Otherwise an exact-content hash identifies duplicate rows. Different source rows from the same date remain separate; the chart does not sum potentially overlapping records. Original exported columns, including missing values, are retained in JSON measurements. There is no inferred medical score or assumed race event. Raw summary uploads are stored separately from digital_athlete_state, so the existing Digital Twin score and forecast do not change just because a summary was uploaded.
+
+VALIDATION
+25 tests passed locally. Actual supplied CSV: 29 parsed, 29 saved and read back in a SQLite SQL-compatibility harness, and repeat skipped. Streamlit AppTest confirms the daily-summary save flow works without event assignment or prediction calls. The source CSV/private records are not bundled. PostgreSQL/Supabase connectivity and PostgreSQL RLS behavior were not tested live. Existing exercise-session processing is retained.
