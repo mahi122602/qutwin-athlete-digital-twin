@@ -64,7 +64,9 @@ def coach_portal():
 
     _render_coach_top_navigation()
 
+    from views.coach.recommendation_reviews import recommendation_reviews
     coach_pages = {
+        "Recommendation Reviews": recommendation_reviews,
         "Digital Twin Dashboard": (
             coach_dashboard
         ),

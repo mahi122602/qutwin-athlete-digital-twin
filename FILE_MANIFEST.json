@@ -1,0 +1,175 @@
+{
+  "based_on_zip_sha256": "6288eeb3acf12e0e4b33b3057365824798135431414ef69ac395ac7ab87ab51e",
+  "files": [
+    {
+      "path": "database/connection_request_repository.py",
+      "action": "replace",
+      "sha256": "6ffa86fdf791743dc28c6aa91711cf11928fca4ea2bdae39491f4f437030fde4"
+    },
+    {
+      "path": "database/migrations/005_upload_review_workflow.sql",
+      "action": "unchanged setup migration",
+      "sha256": "16ef45737a71e40eb928328d3024c51eb1df872c3da106c53459ef389deb32e8"
+    },
+    {
+      "path": "database/twin_repository.py",
+      "action": "replace",
+      "sha256": "cf6531f1dddb8b8eb76cafb2d2c6251a4d58ed1fccc21711294b39dd22bb28b4"
+    },
+    {
+      "path": "database/workflow_repository.py",
+      "action": "replace",
+      "sha256": "4aef9d50fb9f252fe01cc06e12a4b9f77e77ed8892dee8ca3f46ddc59cdcba4d"
+    },
+    {
+      "path": "digital_twin/forecasting_engine.py",
+      "action": "replace",
+      "sha256": "5b2471f192375cc608bfdbd7cbc6a96339417ec83791071dac04a2c427361417"
+    },
+    {
+      "path": "ingestion/adaptive_table.py",
+      "action": "replace",
+      "sha256": "22f331569de61f68190f73657c98621bf2344293309c60a8134bca07f65988b7"
+    },
+    {
+      "path": "ingestion/ai_mapping.py",
+      "action": "add",
+      "sha256": "6e9f871a1cc10532e83055f6efacc47f8126ed30293b0bc65a6505b19c9aef6a"
+    },
+    {
+      "path": "ingestion/workflow_loader.py",
+      "action": "replace",
+      "sha256": "053806f285e9a133240610618a3670622f47b1daac03c69531fcadebe464d4d3"
+    },
+    {
+      "path": "ingestion/xml_activity.py",
+      "action": "add",
+      "sha256": "eb9211c135eccdbf8f4232749cab44781f795207361cd8aa23f08aa3b877fae5"
+    },
+    {
+      "path": "prediction/upload_processing.py",
+      "action": "replace",
+      "sha256": "73daea132ff1ac7fd6451d9d9c01688eff163ae66e485ee97b8ffc99353606e4"
+    },
+    {
+      "path": "recommendation/llm_service.py",
+      "action": "replace",
+      "sha256": "239e627d2050e7fecfd1c8f863f94d864958e064f699c38947ca773de6dd4d2f"
+    },
+    {
+      "path": "requirements-dev.txt",
+      "action": "add",
+      "sha256": "b2cf40cfde63ffcd654d233d12aebeb06ea2092d1cbd22aa25c34efacfcfd804"
+    },
+    {
+      "path": "requirements.txt",
+      "action": "replace",
+      "sha256": "8d56aabe212beada64d575a63630f91989049d38c283553ba6df509840ce20af"
+    },
+    {
+      "path": "research_prediction/adaptive_models.joblib",
+      "action": "add",
+      "sha256": "56ee6aed728ff8f873577638297c84c133c43372c4bb639443efc053db33c468"
+    },
+    {
+      "path": "research_prediction/features.py",
+      "action": "replace",
+      "sha256": "af90918c31d93c12e3f6e64ed90084a7299d8a497826540a749adff8f6c70d6a"
+    },
+    {
+      "path": "research_prediction/history.py",
+      "action": "add",
+      "sha256": "bee0491345912c8f1d9e8413315c3fe19a8864f17de77d436994084ee83e87dd"
+    },
+    {
+      "path": "research_prediction/longitudinal.py",
+      "action": "add",
+      "sha256": "5e7e98d8112c4ada16ba47dee29a05f345db47a48af0437fca19f74cfa80da51"
+    },
+    {
+      "path": "research_prediction/predict.py",
+      "action": "replace",
+      "sha256": "d006dbf28cec8f3f7b47338d4465400eb3fe922264bf2234837db12956baa266"
+    },
+    {
+      "path": "research_prediction/train.py",
+      "action": "replace",
+      "sha256": "44ed981cd82904eaf1ed203ab640c697afc10be980c4909f72254e92b678efc7"
+    },
+    {
+      "path": "research_prediction/validation.json",
+      "action": "replace",
+      "sha256": "461dc7143e4af260747a1f71f9539275d023fdfd1b35e459e580b034e9bd60b7"
+    },
+    {
+      "path": "tests/test_adaptive_v2.py",
+      "action": "add",
+      "sha256": "81cc1be01b3467d62547221a0a604719453c26b858b5e19c205c4cc4962c8a24"
+    },
+    {
+      "path": "tests/test_daily_summary_upload.py",
+      "action": "replace",
+      "sha256": "c22252689209ced9a031b515fe974660f8130b6d091851f4f62bc80a013bdc17"
+    },
+    {
+      "path": "tests/test_research_prediction.py",
+      "action": "replace",
+      "sha256": "e88fd0009d0aef04bb9afcc5111dd08e664583557cd5de3402641fdd2628868f"
+    },
+    {
+      "path": "tests/test_upload_review_workflow.py",
+      "action": "replace",
+      "sha256": "9a4b02e3d6bb9f9700335c9d022b07bb0a89a1e92e31360a91007807d14744cb"
+    },
+    {
+      "path": "ui/prediction_guidance.py",
+      "action": "replace",
+      "sha256": "f2dce05a7d73606458bbeb469fc978fa6bd7b804d17b34b14cfa4175e67ad32b"
+    },
+    {
+      "path": "utils/check_workflow.py",
+      "action": "replace",
+      "sha256": "c9af97e707a7205532e7c1cf2a8489f7d8bee72de0bc5cfe88f4e8950bdf0732"
+    },
+    {
+      "path": "views/athlete/digital_twin.py",
+      "action": "replace",
+      "sha256": "2936342c48253c2c1cc1e12e0c999fefd778d90a20145bbee807e81afce5f3b3"
+    },
+    {
+      "path": "views/athlete/history.py",
+      "action": "replace",
+      "sha256": "bae388f1055047ace9fe63bb58f11b1e851bdc4dcc41fd496acddd2e4a78c63f"
+    },
+    {
+      "path": "views/athlete/import_review.py",
+      "action": "replace",
+      "sha256": "04007ed22600321fa5826a252ac2a980204a39a364e183ab8ed03ede3e1b1a64"
+    },
+    {
+      "path": "views/athlete/predictions.py",
+      "action": "replace",
+      "sha256": "6180336e40da793af542512d3892d61f41a5ebc05151ba439478b5bea8d1021b"
+    },
+    {
+      "path": "views/athlete/simulation.py",
+      "action": "replace",
+      "sha256": "763bd827ee08e167d73209c3f226d6584f8f8e109636ec4d49c534b59a0f96bf"
+    },
+    {
+      "path": "views/athlete/upload.py",
+      "action": "replace",
+      "sha256": "c2a7ba9ac1871bf40d0807fd0e9358ca43632d679b7cfb63f42fba6bb5fb81aa"
+    },
+    {
+      "path": "views/athlete_home.py",
+      "action": "replace",
+      "sha256": "c4309b02efe5daee93dbcf4abf20868e6e83f0c55758ad3b9ffe678f6ac8a735"
+    },
+    {
+      "path": "views/forecasting_page.py",
+      "action": "replace",
+      "sha256": "d3d4f1beb21e33ed266c527c03d0ce86e5276e0aa0bcde7e6617f88d95a9b2ad"
+    }
+  ]
+}

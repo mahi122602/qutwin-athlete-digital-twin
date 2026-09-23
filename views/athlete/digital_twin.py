@@ -1,5 +1,5 @@
 import streamlit as st
-from database.twin_repository import get_athlete_twin_history
+from database.upload_history_repository import get_upload_history as get_athlete_twin_history
 
 def athlete_dashboard():
 
@@ -44,11 +44,11 @@ def athlete_dashboard():
         return
 
     latest = (
-        history_df
-        .sort_values("timestamp")
-        .iloc[-1]
+        history_df.iloc[0]
     )
 
+    if latest.get('prediction_status')=='research_estimate':
+        st.info('Experimental estimates from the latest saved upload. Review Prediction for coverage and coach decisions.')
     c1, c2, c3, c4 = st.columns(4)
 
     c1.metric(

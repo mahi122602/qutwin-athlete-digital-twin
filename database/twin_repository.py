@@ -26,22 +26,21 @@ def save_uploaded_file(athlete_id, filename, file_type, rows_extracted):
 
 @request_cached
 def get_latest_twin_state(athlete_id):
-    conn = get_connection()
-
-    df = pd.read_sql("""
-        SELECT *
-        FROM digital_athlete_state
-        WHERE athlete_id = %s
-        ORDER BY timestamp DESC
-        LIMIT 1;
-    """, conn, params=(athlete_id,))
-
-    conn.close()
-
-    if df.empty:
-        return None
-
-    return df.iloc[0].to_dict()
+    from database.workflow_repository import list_uploads
+    uploads=list_uploads(athlete_id)
+    if uploads:
+        u=uploads[0]
+        result=dict(u['snapshot'],athlete_id=athlete_id,workflow_upload_id=u['id'],uploaded_at=u['uploaded_at'])
+        # Never carry old scores into a new observations-only upload.
+        result['recommendation']=u.get('ai_text') or 'AI recommendation pending. See Prediction for generation status and coach feedback.'
+        result['state_explanation']=result.get('prediction_basis','Measurements saved; no model assessment available.')
+        result['user_status_message']=result['state_explanation']
+        return result
+    conn=get_connection()
+    try:
+        df=pd.read_sql('SELECT * FROM digital_athlete_state WHERE athlete_id=%s ORDER BY timestamp DESC LIMIT 1',conn,params=(athlete_id,))
+    finally:conn.close()
+    return None if df.empty else df.iloc[0].to_dict()
 
 
 @invalidate_reads
@@ -156,14 +155,34 @@ def save_digital_twin_states(athlete_id, upload_id, df):
 
 @request_cached
 def get_athlete_twin_history(athlete_id):
-    conn = get_connection()
+    """Merge legacy rows and current saved snapshots without writing derived values as sensors."""
+    from database.workflow_repository import list_uploads
+    uploads=list_uploads(athlete_id)
+    conn=get_connection()
+    try:
+        legacy=pd.read_sql('SELECT * FROM digital_athlete_state WHERE athlete_id=%s ORDER BY timestamp DESC',conn,params=(athlete_id,))
+    finally:conn.close()
+    linked={u.get('legacy_upload_id') for u in uploads if u.get('legacy_upload_id') is not None}
+    if 'upload_id' in legacy:legacy=legacy[~legacy.upload_id.isin(linked)]
+    rows=[]
+    for u in uploads:
+        rows.append(dict(u['snapshot'],athlete_id=str(athlete_id),workflow_upload_id=u['id'],uploaded_at=u['uploaded_at'],
+                         recommendation=u.get('ai_text') or 'AI draft pending; see Prediction for status.'))
+    frame=pd.concat([pd.DataFrame(rows),legacy],ignore_index=True)
+    if frame.empty:return frame
+    for c in ('heart_rate','sleep_hours','training_load','recovery_time','recovery_index','fatigue_score','readiness_score','twin_score','health_index'):
+        if c not in frame:frame[c]=float('nan')
+    frame['timestamp']=pd.to_datetime(frame.get('timestamp'),utc=True,errors='coerce',format='mixed')
+    return frame.sort_values('timestamp',ascending=False,na_position='last').reset_index(drop=True)
 
-    df = pd.read_sql("""
-        SELECT *
-        FROM digital_athlete_state
-        WHERE athlete_id = %s
-        ORDER BY timestamp DESC;
-    """, conn, params=(athlete_id,))
 
-    conn.close()
-    return df
+def get_workflow_analysis_history(athlete_id):
+    """Dated comparable saved snapshots, available to research/forecast consumers.
+    Keeps model provenance and never substitutes upload time for activity time.
+    """
+    from database.workflow_repository import list_uploads
+    rows=[dict(u['snapshot'],workflow_upload_id=u['id'],uploaded_at=u['uploaded_at']) for u in list_uploads(athlete_id)]
+    if not rows:return pd.DataFrame()
+    frame=pd.DataFrame(rows)
+    frame['timestamp']=pd.to_datetime(frame.get('timestamp'),utc=True,errors='coerce')
+    return frame.sort_values('timestamp',ascending=False,na_position='last')

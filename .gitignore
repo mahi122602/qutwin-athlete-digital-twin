@@ -54,3 +54,9 @@ Thumbs.db
 # Jupyter
 # -----------------------------
 .ipynb_checkpoints/
+
+.streamlit/secrets.toml
+.env
+.env.*
+
+/athlete_digital_twin_cloud_update/

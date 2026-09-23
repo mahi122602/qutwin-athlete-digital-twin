@@ -1,0 +1,18 @@
+COMBINED HISTORY AND EVENT CONTEXT PATCH
+
+Prerequisite: samsung_daily_summary_upload_patch.zip installed and working.
+
+Stop Streamlit. Extract these files into athlete_digital_twin_github (containing app.py), replacing matching files. New helper files must also be copied. Restart and open History. Commit/push and merge for deployment after checking locally.
+
+HISTORY
+The detailed history table combines existing Digital Twin states and saved daily summaries, newest activity date first. Date-only summaries retain their dates; timestamped states display UTC. Old uploads are not redated to today. Source, event, prediction availability and steps are added beside the existing columns. Daily summaries show unavailable scores rather than invented numbers. Existing score charts and latest-prediction cards still use actual Digital Twin states only. Summary-only history works even when no predicted states exist. CSV download matches the combined table.
+
+EVENTS
+Each exercise record's selected event is attached before chronological sorting, included in contextual recommendation text and persisted with new prediction records. The event_type column is added on the next exercise upload; your backend role must own/have ALTER permission on digital_athlete_state. Optional administrator SQL: ALTER TABLE digital_athlete_state ADD COLUMN IF NOT EXISTS event_type TEXT;
+Older states with no recorded event are shown as unavailable; they are not guessed or retroactively reclassified.
+
+LIMITATION — NUMERIC EVENT-AWARE PREDICTIONS ARE NOT IMPLEMENTED
+The deployed Random Forest model features omit race/event type. The supplied training dataset covers 100 m and 800 m races only, whereas the selector offers nine distances. This patch does not invent fatigue/injury score multipliers or claim that event-conditioned scores have been validated. Numeric scores are unchanged by the event label. Recommendation text explicitly says this. Retraining and evaluation with appropriate event-labelled data are still required for numerical event effects. Daily summary rows still bypass prediction because necessary measurements are missing.
+
+VALIDATION
+30 local tests passed, including five new cases for mixed-date ordering, missing scores, summary-only history, event-to-record alignment and SQL parameter alignment. Live PostgreSQL schema alteration and full deployed UI were not tested. Source CSV/private records are not included.

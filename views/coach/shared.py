@@ -7,6 +7,7 @@ from database.connection_request_repository import get_unread_notification_count
 from database.coach_repository import get_coach_athlete_risk_dashboard
 
 COACH_NAV_ITEMS = [
+    {"label":"Reviews", "page":"Recommendation Reviews", "key":"reviews"},
     {
         "label": "Dashboard",
         "page": "Digital Twin Dashboard",
@@ -444,16 +445,7 @@ def _render_coach_nav_carousel():
         )
 
         with left_arrow_col:
-            if st.button(
-                "‹",
-                key="coach_nav_left",
-                help="Previous navigation options",
-                disabled=(start <= 0),
-                use_container_width=True,
-            ):
-                _move_coach_nav_carousel(
-                    "left"
-                )
+            st.button('‹', key='coach_nav_left', help='Previous navigation options', disabled=start <= 0, use_container_width=True, on_click=_move_coach_nav_carousel_callback, args=('left',))
 
         with centre_col:
             track_key = (
@@ -480,36 +472,10 @@ def _render_coach_nav_carousel():
                             st.empty()
                             continue
 
-                        if st.button(
-                            item["label"],
-                            key=(
-                                "coach_top_nav_"
-                                f"{item['key']}"
-                            ),
-                            help=(
-                                "Open "
-                                f"{item['label']}"
-                            ),
-                            use_container_width=True,
-                        ):
-                            open_coach_page(
-                                item["page"]
-                            )
+                        st.button(item['label'], key=f"coach_top_nav_{item['key']}", help=f"Open {item['label']}", use_container_width=True, on_click=open_coach_page_callback, args=(item['page'],))
 
         with right_arrow_col:
-            if st.button(
-                "›",
-                key="coach_nav_right",
-                help="More navigation options",
-                disabled=(
-                    start
-                    >= _coach_carousel_max_start()
-                ),
-                use_container_width=True,
-            ):
-                _move_coach_nav_carousel(
-                    "right"
-                )
+            st.button('›', key='coach_nav_right', help='More navigation options', disabled=start >= _coach_carousel_max_start(), use_container_width=True, on_click=_move_coach_nav_carousel_callback, args=('right',))
 
 def _render_coach_top_navigation():
     coach_name = _coach_display_name()
@@ -1262,17 +1228,7 @@ body,
             )
 
             with avatar_col:
-                if st.button(
-                    initials,
-                    key="coach_avatar_circle",
-                    help=(
-                        f"Open {coach_name}'s "
-                        "coach dashboard"
-                    ),
-                ):
-                    open_coach_page(
-                        "Digital Twin Dashboard"
-                    )
+                st.button(initials, key='coach_avatar_circle', help=f"Open {coach_name}'s coach dashboard", on_click=open_coach_page_callback, args=('Digital Twin Dashboard',))
 
             with brand_col:
                 st.html(
@@ -1313,21 +1269,7 @@ body,
                     else "🔔"
                 )
 
-                if st.button(
-                    bell_label,
-                    key=(
-                        "coach_header_"
-                        "notifications"
-                    ),
-                    help=(
-                        "Athlete risk and "
-                        "request notifications"
-                    ),
-                    use_container_width=True,
-                ):
-                    open_coach_page(
-                        "Notifications"
-                    )
+                st.button(bell_label, key='coach_header_notifications', help='Athlete risk and request notifications', use_container_width=True, on_click=open_coach_page_callback, args=('Notifications',))
 
             with logout_col:
                 if st.button(
@@ -1477,3 +1419,46 @@ def _render_risk_athlete_card(
 </div>
 """
     )
+
+
+def open_coach_page_callback(page_name):
+    """Navigate without browser URL changes."""
+
+    st.session_state.current_page = page_name
+
+    for index, item in enumerate(COACH_NAV_ITEMS):
+        if item["page"] == page_name:
+            st.session_state.coach_nav_carousel_start = (
+                index // COACH_NAV_ITEMS_PER_PAGE
+            ) * COACH_NAV_ITEMS_PER_PAGE
+            break
+
+    # Streamlit reruns automatically after the callback.
+
+def _move_coach_nav_carousel_callback(direction):
+    _initialise_coach_nav_carousel()
+
+    current = int(
+        st.session_state.coach_nav_carousel_start
+    )
+
+    if direction == "left":
+        new_start = max(
+            0,
+            current - COACH_NAV_ITEMS_PER_PAGE,
+        )
+    elif direction == "right":
+        new_start = min(
+            _coach_carousel_max_start(),
+            current + COACH_NAV_ITEMS_PER_PAGE,
+        )
+    else:
+        return
+
+    if new_start == current:
+        return
+
+    st.session_state.coach_nav_carousel_start = new_start
+    st.session_state.coach_nav_slide_direction = direction
+    st.session_state.coach_nav_animation_nonce += 1
+    # Streamlit reruns automatically after the callback.

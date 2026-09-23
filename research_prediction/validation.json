@@ -1,0 +1,324 @@
+{
+  "version": "adaptive-v2",
+  "sklearn_version": "1.6.1",
+  "catboost_version": "1.2.8",
+  "training_data_sha256": "2a62fe72956c5c858c51c69e1ecb3db36fe504fdb7d7a835439d0ec5d6a80ce6",
+  "rows": 999,
+  "athletes": 333,
+  "development_athletes": 266,
+  "held_out_athletes": 67,
+  "supported_events": [
+    "100 m",
+    "800 m"
+  ],
+  "unique_training_dates": 3,
+  "validation": "Model selection: three-fold grouped development CV. Reported metrics: untouched 20% athlete holdout. Bundled models fitted on development athletes only.",
+  "tiers": {
+    "complete": {
+      "features": [
+        "training_load",
+        "sleep_hours",
+        "recovery_time",
+        "temperature",
+        "humidity",
+        "hydration_score"
+      ],
+      "selected_models": {
+        "fatigue": "catboost",
+        "risk": "catboost"
+      },
+      "development_group_cv": {
+        "fatigue": {
+          "linear": 4.749096507538405,
+          "forest": 4.910987018322348,
+          "catboost": 4.678850827334913
+        },
+        "risk": {
+          "linear": 0.46829546382874027,
+          "forest": 0.459088666342673,
+          "catboost": 0.4751293401543157
+        }
+      },
+      "metrics": {
+        "fatigue_mae": 4.667436422440072,
+        "fatigue_rmse": 5.180824717356432,
+        "fatigue_r2": 0.7701551707780264,
+        "mean_baseline_mae": 9.038847117794486,
+        "risk_balanced_accuracy": 0.39208664607836696,
+        "risk_weighted_f1": 0.42108452340188396,
+        "absolute_error_90th_percentile": 7.692159471055582
+      },
+      "ranges": {
+        "training_load": [
+          45.0,
+          87.0
+        ],
+        "sleep_hours": [
+          4.7,
+          8.4
+        ],
+        "recovery_time": [
+          3.3,
+          8.6
+        ],
+        "temperature": [
+          24.1,
+          33.7
+        ],
+        "humidity": [
+          50.0,
+          80.0
+        ],
+        "hydration_score": [
+          0.4,
+          1.0
+        ]
+      },
+      "temporal_diagnostic": {
+        "fatigue_mae": 9.843813264538174,
+        "fatigue_rmse": 10.052466010927606,
+        "fatigue_r2": 0.0012605221649406584,
+        "mean_baseline_mae": 11.117347076806535,
+        "risk_balanced_accuracy": 0.3802812054594303,
+        "risk_weighted_f1": 0.35518499818626403,
+        "absolute_error_90th_percentile": 11.94665850416133
+      }
+    },
+    "load_recovery": {
+      "features": [
+        "training_load",
+        "sleep_hours",
+        "recovery_time",
+        "hydration_score"
+      ],
+      "selected_models": {
+        "fatigue": "linear",
+        "risk": "linear"
+      },
+      "development_group_cv": {
+        "fatigue": {
+          "linear": 5.344072194292562,
+          "forest": 5.4366114327205315,
+          "catboost": 5.34945926429593
+        },
+        "risk": {
+          "linear": 0.4675766719701693,
+          "forest": 0.4620345904857206,
+          "catboost": 0.4537620771784708
+        }
+      },
+      "metrics": {
+        "fatigue_mae": 5.18930805304577,
+        "fatigue_rmse": 6.043049343404175,
+        "fatigue_r2": 0.6872846348610103,
+        "mean_baseline_mae": 9.038847117794486,
+        "risk_balanced_accuracy": 0.3990625752896599,
+        "risk_weighted_f1": 0.41858485186525834,
+        "absolute_error_90th_percentile": 8.814254510942192
+      },
+      "ranges": {
+        "training_load": [
+          45.0,
+          87.0
+        ],
+        "sleep_hours": [
+          4.7,
+          8.4
+        ],
+        "recovery_time": [
+          3.3,
+          8.6
+        ],
+        "hydration_score": [
+          0.4,
+          1.0
+        ]
+      },
+      "temporal_diagnostic": {
+        "fatigue_mae": 9.814562738930677,
+        "fatigue_rmse": 10.677346023525969,
+        "fatigue_r2": -0.1267657169508689,
+        "mean_baseline_mae": 11.117347076806535,
+        "risk_balanced_accuracy": 0.40257166847488085,
+        "risk_weighted_f1": 0.3940704938004026,
+        "absolute_error_90th_percentile": 15.389507449255785
+      }
+    },
+    "recovery": {
+      "features": [
+        "sleep_hours",
+        "recovery_time",
+        "hydration_score"
+      ],
+      "selected_models": {
+        "fatigue": "catboost",
+        "risk": "catboost"
+      },
+      "development_group_cv": {
+        "fatigue": {
+          "linear": 5.776460788476803,
+          "forest": 5.687351288841434,
+          "catboost": 5.650190053392746
+        },
+        "risk": {
+          "linear": 0.47155797105837655,
+          "forest": 0.4653227416251518,
+          "catboost": 0.48330307924377314
+        }
+      },
+      "metrics": {
+        "fatigue_mae": 5.30939597978296,
+        "fatigue_rmse": 6.244125446844746,
+        "fatigue_r2": 0.6661278613517396,
+        "mean_baseline_mae": 9.038847117794486,
+        "risk_balanced_accuracy": 0.39836717261318083,
+        "risk_weighted_f1": 0.40123402425567406,
+        "absolute_error_90th_percentile": 9.780057732170789
+      },
+      "ranges": {
+        "sleep_hours": [
+          4.7,
+          8.4
+        ],
+        "recovery_time": [
+          3.3,
+          8.6
+        ],
+        "hydration_score": [
+          0.4,
+          1.0
+        ]
+      },
+      "temporal_diagnostic": {
+        "fatigue_mae": 9.931678647562988,
+        "fatigue_rmse": 10.983096412640835,
+        "fatigue_r2": -0.19222049157826082,
+        "mean_baseline_mae": 11.117347076806535,
+        "risk_balanced_accuracy": 0.38366362961767225,
+        "risk_weighted_f1": 0.35530400827656927,
+        "absolute_error_90th_percentile": 15.767003899970923
+      }
+    },
+    "load_only": {
+      "features": [
+        "training_load"
+      ],
+      "selected_models": {
+        "fatigue": "catboost",
+        "risk": "linear"
+      },
+      "development_group_cv": {
+        "fatigue": {
+          "linear": 6.59235344238592,
+          "forest": 6.533562047126942,
+          "catboost": 6.523180438581641
+        },
+        "risk": {
+          "linear": 0.4512324261910516,
+          "forest": 0.45083206242039003,
+          "catboost": 0.4481989654084492
+        }
+      },
+      "metrics": {
+        "fatigue_mae": 6.134884204227601,
+        "fatigue_rmse": 7.799916997070472,
+        "fatigue_r2": 0.4790249774336863,
+        "mean_baseline_mae": 9.038847117794486,
+        "risk_balanced_accuracy": 0.37022800446809906,
+        "risk_weighted_f1": 0.36550590136164807,
+        "absolute_error_90th_percentile": 12.639128134506478
+      },
+      "ranges": {
+        "training_load": [
+          45.0,
+          87.0
+        ]
+      },
+      "temporal_diagnostic": {
+        "fatigue_mae": 9.890668844298045,
+        "fatigue_rmse": 11.815265120397507,
+        "fatigue_r2": -0.37972944395078145,
+        "mean_baseline_mae": 11.117347076806535,
+        "risk_balanced_accuracy": 0.37394369634014946,
+        "risk_weighted_f1": 0.3219882575203068,
+        "absolute_error_90th_percentile": 19.076203135551665
+      }
+    }
+  },
+  "metrics": {
+    "complete": {
+      "fatigue_mae": 4.667436422440072,
+      "fatigue_rmse": 5.180824717356432,
+      "fatigue_r2": 0.7701551707780264,
+      "mean_baseline_mae": 9.038847117794486,
+      "risk_balanced_accuracy": 0.39208664607836696,
+      "risk_weighted_f1": 0.42108452340188396,
+      "absolute_error_90th_percentile": 7.692159471055582
+    },
+    "load_recovery": {
+      "fatigue_mae": 5.18930805304577,
+      "fatigue_rmse": 6.043049343404175,
+      "fatigue_r2": 0.6872846348610103,
+      "mean_baseline_mae": 9.038847117794486,
+      "risk_balanced_accuracy": 0.3990625752896599,
+      "risk_weighted_f1": 0.41858485186525834,
+      "absolute_error_90th_percentile": 8.814254510942192
+    },
+    "recovery": {
+      "fatigue_mae": 5.30939597978296,
+      "fatigue_rmse": 6.244125446844746,
+      "fatigue_r2": 0.6661278613517396,
+      "mean_baseline_mae": 9.038847117794486,
+      "risk_balanced_accuracy": 0.39836717261318083,
+      "risk_weighted_f1": 0.40123402425567406,
+      "absolute_error_90th_percentile": 9.780057732170789
+    },
+    "load_only": {
+      "fatigue_mae": 6.134884204227601,
+      "fatigue_rmse": 7.799916997070472,
+      "fatigue_r2": 0.4790249774336863,
+      "mean_baseline_mae": 9.038847117794486,
+      "risk_balanced_accuracy": 0.37022800446809906,
+      "risk_weighted_f1": 0.36550590136164807,
+      "absolute_error_90th_percentile": 12.639128134506478
+    }
+  },
+  "ranges": {
+    "training_load": [
+      45.0,
+      87.0
+    ],
+    "sleep_hours": [
+      4.7,
+      8.4
+    ],
+    "recovery_time": [
+      3.3,
+      8.6
+    ],
+    "temperature": [
+      24.1,
+      33.7
+    ],
+    "humidity": [
+      50.0,
+      80.0
+    ],
+    "hydration_score": [
+      0.4,
+      1.0
+    ]
+  },
+  "limitations": [
+    "Research dataset labels; no verified prospective injury outcomes or injury horizon.",
+    "Training-load definition is undocumented. Wearable load and HR-duration proxy are not established as equivalent to training load.",
+    "Only 100 m and 800 m occur in training. Other events receive context-aware AI advice, not invented event-specific scores.",
+    "Only three training dates; no claim of validated long-term forecasting or fitted personal physiology.",
+    "Readiness, Twin Score and Health Index are engineered summaries, not separately validated outcomes.",
+    "Holdout error summaries are not individual confidence intervals or clinical validation."
+  ],
+  "excluded_inputs": {
+    "heart_rate": "Resting vs exercise context undocumented in training.",
+    "previous_injury": "Training values 4\u20139 have no supplied coding definition."
+  }
+}

@@ -6,7 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from database.athlete_repository import get_athlete_profile
-from database.twin_repository import get_athlete_twin_history
+from database.upload_history_repository import get_upload_history as get_athlete_twin_history
 from database.connection_request_repository import (
     get_unread_notification_count,
 )
@@ -294,25 +294,15 @@ body:has(.st-key-athlete_top_nav_shell) [data-testid="stMainBlockContainer"] > [
             st.html('<div class="qutwin-nav-brand"><span>◈</span> QUTwin</div>')
         for col, item in zip(cols[1:1 + len(items)], items):
             with col:
-                if st.button(item["label"], key=f"top_nav_{item['key']}",
-                             help=f"Open {item['label']}",
-                             type="primary" if current_page == item["page"] else "secondary",
-                             use_container_width=True):
-                    open_athlete_page(item["page"])
+                st.button(item['label'], key=f"top_nav_{item['key']}", help=f"Open {item['label']}", type='primary' if current_page == item['page'] else 'secondary', use_container_width=True, on_click=open_athlete_page_callback, args=(item['page'],))
         with cols[1 + len(items)]:
             count = max(0, int(unread_count or 0))
             label = "🔔" + (f" {min(count, 99)}" if count else "")
-            if st.button(label, key="athlete_header_notifications",
-                         help=f"Notifications ({count} unread)", use_container_width=True):
-                open_athlete_page("Notifications")
+            st.button(label, key='athlete_header_notifications', help=f'Notifications ({count} unread)', use_container_width=True, on_click=open_athlete_page_callback, args=('Notifications',))
         with cols[2 + len(items)]:
-            if st.button(initials, key="athlete_avatar_circle",
-                         help=f"Open {athlete_name}'s profile", use_container_width=True):
-                open_athlete_page("Profile")
+            st.button(initials, key='athlete_avatar_circle', help=f"Open {athlete_name}'s profile", use_container_width=True, on_click=open_athlete_page_callback, args=('Profile',))
         with cols[3 + len(items)]:
-            if st.button("⚙️", key="athlete_header_settings",
-                         help="Settings", use_container_width=True):
-                open_athlete_page("Settings")
+            st.button('⚙️', key='athlete_header_settings', help='Settings', use_container_width=True, on_click=open_athlete_page_callback, args=('Settings',))
 
 
 
@@ -728,17 +718,7 @@ def _render_ai_prediction_cards(
             )
         )
 
-        if st.button(
-            "View Details →",
-            key=(
-                "dashboard_injury_"
-                "prediction_details"
-            ),
-            use_container_width=True,
-        ):
-            open_athlete_page(
-                "Predictions & Coach Recommendations"
-            )
+        st.button('View Details →', key='dashboard_injury_prediction_details', use_container_width=True, on_click=open_athlete_page_callback, args=('Predictions & Coach Recommendations',))
 
     # --------------------------------------------------------
     # FATIGUE
@@ -756,17 +736,7 @@ def _render_ai_prediction_cards(
             )
         )
 
-        if st.button(
-            "View Details →",
-            key=(
-                "dashboard_fatigue_"
-                "prediction_details"
-            ),
-            use_container_width=True,
-        ):
-            open_athlete_page(
-                "Predictions & Coach Recommendations"
-            )
+        st.button('View Details →', key='dashboard_fatigue_prediction_details', use_container_width=True, on_click=open_athlete_page_callback, args=('Predictions & Coach Recommendations',))
 
     # --------------------------------------------------------
     # RECOVERY
@@ -784,17 +754,7 @@ def _render_ai_prediction_cards(
             )
         )
 
-        if st.button(
-            "View Details →",
-            key=(
-                "dashboard_recovery_"
-                "prediction_details"
-            ),
-            use_container_width=True,
-        ):
-            open_athlete_page(
-                "Predictions & Coach Recommendations"
-            )
+        st.button('View Details →', key='dashboard_recovery_prediction_details', use_container_width=True, on_click=open_athlete_page_callback, args=('Predictions & Coach Recommendations',))
 
 
 # ============================================================
@@ -811,15 +771,9 @@ def _render_summary_cards(
         )
     )
 
-    recovery = _safe_float(
-        latest.get(
-            "recovery_index",
-            latest.get(
-                "readiness_score",
-                0,
-            ),
-        )
-    )
+    recovery_raw=latest.get('recovery_index')
+    recovery_missing=pd.isna(recovery_raw)
+    recovery=0 if recovery_missing else _safe_float(recovery_raw)*100
 
     training_load = _safe_float(
         latest.get(
@@ -937,6 +891,16 @@ def _render_summary_cards(
             "Needs Attention"
         )
         twin_class = "warn"
+
+    if recovery_missing:
+        recovery_status='Not measured';recovery_class='info'
+    load_missing=pd.isna(latest.get('training_load'))
+    if load_missing:
+        load_status='Not measured';load_class='info'
+    if latest.get('prediction_status')=='research_estimate':
+        risk_status='Exploratory';risk_class='info'
+        readiness_status='Research estimate';readiness_class='info'
+        load_status='Scale unverified' if not load_missing else 'Not measured';load_class='info'
 
     # ========================================================
     # CARD BUILDER
@@ -1095,7 +1059,7 @@ def _render_summary_cards(
         st.html(
             summary_card(
                 "RECOVERY",
-                f"{recovery:.0f}%",
+                "Not available" if recovery_missing else f"{recovery:.0f}%",
                 recovery_status,
                 recovery_class,
                 "↻",
@@ -1120,8 +1084,7 @@ def _render_summary_cards(
             summary_card(
                 "TRAINING LOAD",
                 (
-                    f"{training_load:.0f} "
-                    f"AU"
+                    "Not available" if load_missing else f"{training_load:.0f} AU"
                 ),
                 load_status,
                 load_class,
@@ -1236,13 +1199,7 @@ def athlete_feature_gallery():
                 errors="coerce",
             )
 
-            latest = (
-                history_df
-                .sort_values(
-                    "timestamp"
-                )
-                .iloc[-1]
-            )
+            latest = history_df.iloc[0]
 
         # ========================================================
         # WELCOME
@@ -1303,17 +1260,7 @@ def athlete_feature_gallery():
                 "your first summary."
             )
 
-            if st.button(
-                "Upload Athlete Data",
-                key=(
-                    "home_upload_first_data"
-                ),
-                type="primary",
-            ):
-
-                open_athlete_page(
-                    "Upload Garmin Data"
-                )
+            st.button('Upload Athlete Data', key='home_upload_first_data', type='primary', on_click=open_athlete_page_callback, args=('Upload Garmin Data',))
 
 
             return
@@ -1321,6 +1268,13 @@ def athlete_feature_gallery():
         # ========================================================
         # TODAY'S SUMMARY
         # ========================================================
+
+        if latest.get('prediction_status') == 'research_estimate':
+            st.info('Latest saved upload: experimental research estimates. See Prediction for model coverage and coach feedback.')
+        if pd.isna(latest.get('fatigue_score')) or pd.isna(latest.get('readiness_score')):
+            st.info('Your latest upload is saved. Its available measurements and AI recommendation status are on the Prediction page; no numeric model covers this input set yet.')
+            st.button('View upload analysis',on_click=open_athlete_page_callback,args=('Predictions & Coach Recommendations',))
+            return
 
         _render_summary_cards(
             latest
@@ -1333,3 +1287,14 @@ def athlete_feature_gallery():
         _render_ai_prediction_cards(
             latest
         )
+
+
+def open_athlete_page_callback(page_name):
+    """
+    Navigate using Streamlit session state.
+
+    This prevents browser-level URL navigation and keeps
+    the authenticated Streamlit session alive.
+    """
+    st.session_state.current_page = page_name
+    # Streamlit reruns automatically after the callback.

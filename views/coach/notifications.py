@@ -5,6 +5,10 @@ from database.connection_request_repository import get_notifications, get_unread
 from views.coach.shared import _get_risk_df, _render_page_heading, _render_risk_athlete_card
 
 def coach_notifications():
+    if st.button("Open Recommendation Reviews", key="notifications_open_reviews"):
+        st.session_state.current_page = "Recommendation Reviews"
+        st.rerun()
+
     _render_page_heading(
         "Coach Notifications",
         (
