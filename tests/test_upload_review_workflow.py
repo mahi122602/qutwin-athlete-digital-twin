@@ -21,7 +21,7 @@ class Cursor:
     def description(self): return self.cur.description
     def execute(self,sql,args=()):
         sql=sql.replace('%s','?').replace('::jsonb','').replace('::text','').replace(' FOR UPDATE OF r','').replace(' FOR UPDATE','')
-        sql=sql.replace("NOW()-INTERVAL '2 minutes'","datetime('now','-2 minutes')").replace('NOW()',"datetime('now')")
+        sql=sql.replace("NOW()-INTERVAL '2 minutes'","datetime('now','-2 minutes')").replace("NOW()-INTERVAL '5 minutes'","datetime('now','-5 minutes')").replace('NOW()',"datetime('now')")
         self.cur.execute(sql,args); return self
     def fetchone(self):
         row=self.cur.fetchone()
@@ -275,3 +275,13 @@ def test_coach_ui_modification(monkeypatch):
     app.button[0].click().run()
     assert not app.exception
     assert calls==[('coach1',1,'Modified','My revised plan')]
+
+def test_automatic_retry_cooldown(db):
+    upload_id=saved()['id']
+    _,token=repo.claim_ai('athlete1',upload_id)
+    repo.finish_ai('athlete1',upload_id,token,error='Temporary outage')
+    assert repo.claim_ai('athlete1',upload_id)==(None,None)
+    db.execute("UPDATE qutwin_processed_uploads SET ai_started_at=datetime('now','-6 minutes') WHERE id=?",(upload_id,))
+    db.commit()
+    upload,token=repo.claim_ai('athlete1',upload_id)
+    assert upload and token

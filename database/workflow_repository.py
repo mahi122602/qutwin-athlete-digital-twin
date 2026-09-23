@@ -96,7 +96,8 @@ def claim_ai(athlete_id, upload_id):
     try:
         with conn.cursor() as cur:
             cur.execute("""UPDATE qutwin_processed_uploads SET ai_status='generating',ai_token=%s,ai_started_at=NOW(),ai_error=NULL
-                WHERE id=%s AND athlete_id=%s AND (ai_status IN ('pending','failed','not_configured')
+                WHERE id=%s AND athlete_id=%s AND (ai_status IN ('pending','not_configured')
+                OR (ai_status='failed' AND (ai_started_at IS NULL OR ai_started_at < NOW()-INTERVAL '5 minutes'))
                 OR (ai_status='generating' AND ai_started_at < NOW()-INTERVAL '2 minutes')) RETURNING *""",(token,upload_id,str(athlete_id)))
             rows=_rows(cur)
         conn.commit()

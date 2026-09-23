@@ -7,8 +7,6 @@ from ui.prediction_guidance import render_guidance
 
 
 def render_coach_feedback(reviews):
-    if not reviews:
-        st.info('No coach feedback yet. An AI draft must first be generated and sent to your assigned coach. Their approval, changes or rejection will appear here after review.')
     for r in reviews:
         st.markdown(f"**Coach {r['coach_id']} · {r['status']}**")
         if r['status']=='Rejected':
@@ -26,9 +24,10 @@ def athlete_predictions():
     st.caption('Upload analysis · adaptive-v2')
     athlete_id=str(st.session_state.user_id)
     try:
-        # Only new submissions trigger generation automatically, never normal navigation.
+        # Generate newly saved files using server settings only.
         pending=st.session_state.pop('workflow_generate_ids',[])
-        if pending:
+        configured = bool(setting("GEMINI_API_KEY") and setting("QUTWIN_GEMINI_MODEL"))
+        if pending and configured:
             with st.spinner('Preparing your AI recommendation for coach review…'):
                 for upload_id in pending:
                     generate_for_upload(athlete_id,upload_id)
@@ -90,38 +89,24 @@ def athlete_predictions():
             from ui.prediction_guidance import LABELS
             st.caption('Measurements not supplied: ' + ', '.join(LABELS.get(k,k.replace('_',' ')) for k in snapshot['missing_inputs']))
         st.subheader('1. AI-generated recommendation')
-        if not setting('GEMINI_API_KEY') or not setting('QUTWIN_GEMINI_MODEL'):
-            st.info('AI recommendations are not available because the app’s AI connection is not configured. This is an app setup issue, not an error in your uploaded file. Ask the app administrator to configure the service. If you manage this app, use the setup section below.')
-        with st.expander('Configure AI for this session'):
-            with st.form('workflow_ai_setup'):
-                key_value = st.text_input('Gemini API key', type='password')
-                model_value = st.text_input('Model ID', value=setting('QUTWIN_GEMINI_MODEL') or 'gemini-2.5-flash-lite')
-                submitted = st.form_submit_button('Save session settings')
-            if submitted:
-                if not key_value.strip() or not model_value.strip():
-                    st.error('Enter both an API key and a model ID.')
-                else:
-                    st.session_state['workflow_GEMINI_API_KEY'] = key_value.strip()
-                    st.session_state['workflow_QUTWIN_GEMINI_MODEL'] = model_value.strip()
-                    st.rerun()
-            st.caption('Used for API requests only; not stored in upload records. Usage follows the Google project’s quota and billing tier. Clear the settings below when finished.')
-            if st.button('Clear session AI settings'):
-                st.session_state.pop('workflow_GEMINI_API_KEY', None)
-                st.session_state.pop('workflow_QUTWIN_GEMINI_MODEL', None)
-                st.rerun()
+        if not u.get('ai_text') and configured and u['id'] not in pending:
+            with st.spinner('Preparing your recommendation…'):
+                generate_for_upload(athlete_id, u['id'])
+            u = next((row for row in list_uploads(athlete_id) if row['id'] == u['id']), u)
         if u.get('ai_text'):
-            st.caption(f"Generated with {u['ai_model']} · Draft awaiting coach review unless approved below")
+            st.caption('AI draft · Coach approval is shown below when available')
             st.write(u['ai_text'])
+        elif u.get('ai_status') == 'generating':
+            st.info('Your recommendation is being prepared. It will appear when you return to this page.')
         else:
-            if u.get('ai_error') and setting('GEMINI_API_KEY') and setting('QUTWIN_GEMINI_MODEL'):
-                st.warning(u['ai_error'])
-            if setting('GEMINI_API_KEY') and setting('QUTWIN_GEMINI_MODEL'):
-                st.info('The AI recommendation has not been generated. Click Generate / retry below. If it fails again, ask the app administrator to check model access and account quota; your saved data will remain available.')
-            if st.button('Generate / retry AI recommendation',key=f"retry_ai_{u['id']}"):
-                with st.spinner('Generating recommendation…'):
-                    generate_for_upload(athlete_id,u['id'])
-                st.rerun()
-        st.subheader('2. Recommendation from coach')
-        render_coach_feedback([r for r in get_reviews(athlete_id) if r['upload_id']==u['id']])
+            st.info('Your data is saved. Recommendations are temporarily unavailable. Please check back shortly.')
+            logging.getLogger(__name__).warning(
+                'Recommendation unavailable: server_configured=%s status=%s',
+                configured, u.get('ai_status', 'pending'))
+        reviews = [r for r in get_reviews(athlete_id)
+                   if r['upload_id'] == u['id'] and r['status'] != 'Pending']
+        if reviews:
+            st.subheader('2. Recommendation from coach')
+            render_coach_feedback(reviews)
     except Exception as exc:
         show_workflow_error(exc, 'Prediction')

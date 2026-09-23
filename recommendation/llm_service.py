@@ -13,9 +13,6 @@ def setting(name):
         return value
     try:
         import streamlit as st
-        session_value = st.session_state.get('workflow_' + name, '')
-        if session_value:
-            return session_value
         return st.secrets.get(name, '')
     except Exception:
         return ''
