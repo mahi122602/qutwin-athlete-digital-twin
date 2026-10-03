@@ -1,9 +1,11 @@
+from database.access_control import guard_athlete_read
 """One row per file, merging legacy uploads without duplicating new uploads."""
 import pandas as pd
 from database.connection import get_connection
 from database.workflow_repository import list_uploads, get_reviews
 
 
+@guard_athlete_read
 def get_upload_history(athlete_id):
     uploads=list_uploads(athlete_id)
     reviews=get_reviews(athlete_id)

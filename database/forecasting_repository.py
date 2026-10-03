@@ -1,4 +1,5 @@
 from __future__ import annotations
+from database.access_control import guard_private_health
 from utils.performance import request_cached, invalidate_reads
 
 from contextlib import closing
@@ -161,6 +162,8 @@ def ensure_forecasting_schema() -> None:
                 ON athlete_forecast_runs (athlete_id, generated_at DESC)
                 """
             )
+        with connection.cursor() as cursor:
+            cursor.execute("ALTER TABLE menstrual_cycle_history ALTER COLUMN period_end_date DROP NOT NULL")
         connection.commit()
 
 
@@ -216,6 +219,7 @@ def set_athlete_gender(athlete_id: str, gender: str) -> None:
 
 
 @invalidate_reads
+@guard_private_health
 def set_menstrual_tracking_enabled(athlete_id: str, enabled: bool) -> None:
     with closing(_get_connection()) as connection:
         with connection.cursor() as cursor:
@@ -238,6 +242,7 @@ def set_menstrual_tracking_enabled(athlete_id: str, enabled: bool) -> None:
 
 
 @invalidate_reads
+@guard_private_health
 def add_menstrual_cycle(
     athlete_id: str,
     period_start_date: date,
@@ -245,9 +250,16 @@ def add_menstrual_cycle(
     symptoms: str | None = None,
     athlete_notes: str | None = None,
 ) -> None:
-    if period_end_date < period_start_date:
+    if period_start_date is None:
+        raise ValueError("Choose a start date.")
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    today = datetime.now(ZoneInfo("Australia/Brisbane")).date()
+    if period_start_date > today or (period_end_date is not None and period_end_date > today):
+        raise ValueError("Record actual dates, not future dates.")
+    if period_end_date is not None and period_end_date < period_start_date:
         raise ValueError("Period end date cannot be before the start date.")
-    duration = (period_end_date - period_start_date).days + 1
+    duration = (period_end_date - period_start_date).days + 1 if period_end_date else 0
     if duration > 15:
         raise ValueError("Period duration must be 15 days or fewer.")
 
@@ -281,6 +293,7 @@ def add_menstrual_cycle(
         connection.commit()
 
 
+@guard_private_health
 @request_cached
 def get_menstrual_history(athlete_id: str) -> pd.DataFrame:
     with closing(_get_connection()) as connection:
@@ -302,6 +315,7 @@ def get_menstrual_history(athlete_id: str) -> pd.DataFrame:
 
 
 @invalidate_reads
+@guard_private_health
 def replace_menstrual_history(
     athlete_id: str,
     edited_df: pd.DataFrame,
@@ -314,8 +328,8 @@ def replace_menstrual_history(
     else:
         for column in ("period_start_date", "period_end_date"):
             edited[column] = pd.to_datetime(edited[column], errors="coerce").dt.date
-        if edited[["period_start_date", "period_end_date"]].isna().any().any():
-            raise ValueError("Every row must contain valid start and end dates.")
+        if edited["period_start_date"].isna().any():
+            raise ValueError("Every row must contain a valid start date.")
         invalid = edited["period_end_date"] < edited["period_start_date"]
         if invalid.any():
             raise ValueError("An end date cannot be before its start date.")
@@ -354,7 +368,7 @@ def replace_menstrual_history(
                 symptoms = row.get("symptoms")
                 notes = row.get("athlete_notes")
                 start_date = row["period_start_date"]
-                end_date = row["period_end_date"]
+                end_date = None if pd.isna(row["period_end_date"]) else row["period_end_date"]
 
                 if pd.notna(cycle_id):
                     cursor.execute(

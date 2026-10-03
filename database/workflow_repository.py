@@ -1,3 +1,4 @@
+from database.access_control import guard_athlete_read
 """Atomic uploads and per-upload coach decisions. Never cache across page visits."""
 import json
 import uuid
@@ -17,6 +18,7 @@ def _rows(cur):
     return [dict(zip(names, row)) for row in cur.fetchall()]
 
 
+@guard_athlete_read
 def list_uploads(athlete_id):
     conn = get_connection()
     try:
@@ -131,6 +133,7 @@ def finish_ai(athlete_id, upload_id, token, text=None, model=None, error=None, s
         conn.close()
 
 
+@guard_athlete_read
 def get_reviews(athlete_id):
     conn=get_connection()
     try:
@@ -179,7 +182,7 @@ def review_recommendation(coach_id, review_id, decision, comment):
             cur.execute("""SELECT r.upload_id,u.athlete_id,u.ai_text FROM qutwin_recommendation_reviews r
                 JOIN qutwin_processed_uploads u ON u.id=r.upload_id
                 JOIN coach_athlete_mapping m ON m.athlete_id::text=u.athlete_id AND m.coach_id::text=r.coach_id
-                WHERE r.id=%s AND r.coach_id=%s AND r.status='Pending' FOR UPDATE OF r""",(review_id,str(coach_id)))
+                WHERE r.id=%s AND r.coach_id=%s AND r.status='Pending' FOR UPDATE OF r FOR SHARE OF m""",(review_id,str(coach_id)))
             row=cur.fetchone()
             if row is None:
                 raise ValueError('This review was already completed or is not assigned to you.')

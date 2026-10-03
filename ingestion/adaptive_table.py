@@ -11,6 +11,7 @@ import pandas as pd
 
 LIMIT=100*1024*1024
 FIELDS={
+ 'latitude':['lat','start latitude','position lat'], 'longitude':['lon','lng','start longitude','position long'],
  'timestamp':['date','activity date','start time','startdate','start date','start_date_local','day_time','date / time','begin timestamp','start timestamp'],
  'heart_rate':['avg hr','average heart rate','avg heart rate','mean heart rate','mean_heart_rate','average_heartrate','avg_heart_rate','hr'],
  'duration_minutes':['time','moving time','elapsed time','duration','total timer time','exercise duration'],
@@ -27,7 +28,7 @@ UNITS={'duration_minutes':['minutes','seconds','milliseconds','hours'],
  'sleep_hours':['hours','minutes','seconds'], 'recovery_time':['hours','minutes','seconds'],
  'distance':['km','m','mi'], 'temperature':['C','F'], 'hrv_ms':['milliseconds','seconds'],
  'avg_speed':['km/h','m/s','mph'],'total_ascent':['m','ft']}
-BOUNDS={'heart_rate':(20,250),'sleep_hours':(0,24),'training_load':(0,10000),
+BOUNDS={'latitude':(-90,90),'longitude':(-180,180),'heart_rate':(20,250),'sleep_hours':(0,24),'training_load':(0,10000),
  'recovery_time':(0,720),'temperature':(-60,65),'humidity':(0,100),'previous_injury':(0,1),
  'resting_heart_rate':(20,150),'hrv_ms':(1,500),'session_rpe':(0,10),'avg_speed':(0,150),'total_ascent':(0,20000),
  'duration_minutes':(0,10080),'distance':(0,10000),'steps':(0,1000000),'calories':(0,100000)}
@@ -232,6 +233,12 @@ def normalise_table(raw, options=None):
   values=frame[col]
   if field=='timestamp' and o.get('time_column') in frame:values=values.astype(str)+' '+frame[o['time_column']].astype(str)
   out[field]=values.map(lambda v:convert(v,field,col,o))
+  if field=='timestamp':
+   date_only=values.astype(str).str.strip().str.fullmatch(r'(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{4})') & out[field].notna()
+   if date_only.any():
+    out.loc[date_only,'activity_date_only']=values[date_only].map(lambda v: pd.Timestamp(convert(v,'timestamp',col,o)).tz_convert(o.get('timezone','UTC')).date().isoformat())
+    out.loc[date_only,'activity_timezone']=o.get('timezone','UTC')
+    out.loc[date_only,'timestamp_precision']='day'
   if field in BOUNDS:
    lo,hi=BOUNDS[field];valid=pd.to_numeric(out[field],errors='coerce').between(lo,hi)
    if field=='previous_injury':valid &= out[field].isin([0,1])

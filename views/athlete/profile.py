@@ -176,7 +176,7 @@ def athlete_profile():
                     row("Weight", f'{st.session_state[prefix + "weight"]:g} kg' if st.session_state[prefix + "weight"] is not None else None)
                 st.caption("Age is shown from your registration details.")
             with st.container(key="qp_data"):
-                st.html('<div class="qp-card-title"><span>↗</span>Connected Data</div>')
+                st.html('<div class="qp-card-title"><span>↗</span>Data source</div>')
                 row("Data access", "Uploaded activity files")
                 row("Available twin records", len(history) if has_history else (0 if history_available else "Unavailable"))
                 row("Latest activity record", latest_date)
@@ -222,3 +222,6 @@ def athlete_profile():
                     st.session_state[f"qp_revision_{athlete_id}"] = revision + 1
                     st.session_state[f"qp_saved_{athlete_id}"] = True
                     st.rerun()
+
+    from views.athlete.privacy_controls import render_delete_account
+    render_delete_account()

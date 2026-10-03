@@ -103,4 +103,7 @@ def coach_portal():
         coach_pages[current_page]
     )
 
-    selected_page_function()
+    try:
+        selected_page_function()
+    except PermissionError:
+        st.warning("This athlete is no longer connected to you. Their data is unavailable.")

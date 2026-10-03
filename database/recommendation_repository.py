@@ -1,3 +1,4 @@
+from database.access_control import guard_athlete_read
 from utils.performance import request_cached, invalidate_reads
 from database.connection import get_connection
 import pandas as pd
@@ -13,6 +14,11 @@ def save_coach_recommendation(
 ):
     conn = get_connection()
     cur = conn.cursor()
+
+    cur.execute('SELECT 1 FROM coach_athlete_mapping WHERE coach_id=%s AND athlete_id=%s FOR SHARE',(str(coach_id),str(athlete_id)))
+    if not cur.fetchone():
+        cur.close();conn.close()
+        raise PermissionError('This athlete is no longer connected to you.')
 
     final_recommendation = coach_comment if coach_comment else ai_recommendation
 
@@ -41,6 +47,7 @@ def save_coach_recommendation(
     conn.close()
 
 
+@guard_athlete_read
 @request_cached
 def get_latest_coach_recommendation(athlete_id):
     conn = get_connection()
@@ -69,6 +76,7 @@ def get_latest_coach_recommendation(athlete_id):
     return df.iloc[0].to_dict()
 
 
+@guard_athlete_read
 @request_cached
 def get_coach_recommendation_history(athlete_id):
     conn = get_connection()

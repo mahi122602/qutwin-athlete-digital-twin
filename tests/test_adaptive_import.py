@@ -101,23 +101,20 @@ def test_correct_existing_preserves_history_entry(db):
  _,token=repo.claim_ai('athlete1',first['id'])
  with pytest.raises(ValueError,match='cannot be overwritten'):repo.correct_observation_upload(*args)
 
-def test_import_settings_apply_then_upload(monkeypatch):
+def test_simple_upload_leaves_ambiguous_optional_units_missing(monkeypatch):
  from streamlit.testing.v1 import AppTest
  import streamlit as st
  import views.athlete.upload as page
  f=Upload('summary.csv',b'Split,Time,Avg HR,Avg Temperature\n1,00:02:00,150,28\nSummary,00:02:00,150,28\n');f.size=len(f.getvalue())
+ monkeypatch.setattr(page,'location_settings',lambda _: ({},'Unknown'))
  monkeypatch.setattr(st,'file_uploader',lambda *a,**kw:[f]);saved=[]
  monkeypatch.setattr(page,'process_upload',lambda *a:saved.append(a) or {'status':'saved','id':1})
  app=AppTest.from_string("import streamlit as st\nst.session_state.user_id='athlete1'\nfrom views.athlete.upload import upload_garmin_data\nupload_garmin_data()\n").run()
  assert not app.exception
- next(s for s in app.selectbox if s.label=='temperature unit').select('C')
- next(b for b in app.button if b.label=='Apply import settings').click().run()
- assert not app.exception
  app.multiselect[0].select('5 km').run()
- next(s for s in app.selectbox if s.label=='Event assignment').select('5 km').run()
  next(b for b in app.button if b.label=='Upload and proceed').click().run()
  assert not app.exception and len(saved)==1
- assert len(saved[0][1]['df'])==1 and saved[0][1]['df'].temperature.iloc[0]==28
+ assert len(saved[0][1]['df'])==1 and pd.isna(saved[0][1]['df'].temperature.iloc[0])
 
 def test_time_only_does_not_invent_date():
  df,_=normalise_table(pd.DataFrame({'timestamp':['12:30:00'],'heart_rate':[150]}))

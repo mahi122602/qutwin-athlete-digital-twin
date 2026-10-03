@@ -1,3 +1,4 @@
+from database.access_control import guard_athlete_read
 from utils.performance import request_cached, invalidate_reads
 from database.connection import get_connection
 from authentication.password_utils import hash_password, check_password
@@ -44,6 +45,7 @@ def login_athlete(athlete_id, password):
     return check_password(password, result[0])
 
 
+@guard_athlete_read
 @request_cached
 def get_athlete_profile(athlete_id):
     conn = get_connection()

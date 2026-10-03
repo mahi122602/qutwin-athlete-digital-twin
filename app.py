@@ -166,7 +166,7 @@ if "user_id" not in st.session_state:
 # APPLY THEME AFTER AUTHENTICATION
 # ============================================================
 
-if st.session_state.logged_in:
+if st.session_state.logged_in and st.session_state.role != "Athlete":
     apply_theme()
 
 
@@ -452,6 +452,9 @@ def athlete_navigation():
     """
 
     hide_sidebar()
+    if get_athlete_profile(str(st.session_state.user_id)) is None:
+        st.session_state.clear()
+        st.rerun()
 
     athlete_pages = {
 
@@ -532,10 +535,10 @@ def athlete_navigation():
     # ALL OTHER ATHLETE PAGES
     # ========================================================
 
-    render_athlete_global_navigation()
+    from ui.studio_shell import render_shell, apply_suite_theme
+    render_shell()
 
     with st.container(key="athlete_page_content"):
-        show_athlete_page_controls()
 
         selected_page_function = (
             athlete_pages[
@@ -544,6 +547,7 @@ def athlete_navigation():
         )
 
         selected_page_function()
+        apply_suite_theme()
 
 
 # ============================================================
@@ -653,6 +657,9 @@ def coach_navigation():
 if not st.session_state.logged_in:
 
     hide_sidebar()
+
+    if st.session_state.pop("account_deleted_notice", False):
+        st.success("Your account and its active database records have been deleted.")
 
     if (
         st.session_state.auth_page

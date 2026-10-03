@@ -77,6 +77,11 @@ def tcx(root):
             averages=[(w,v) for w,v in averages if w and v is not None]
             if averages:row['heart_rate']=sum(w*v for w,v in averages)/sum(w for w,v in averages)
         if row['duration_minutes'] is None and len(dates)>1:row['duration_minutes']=(max(dates)-min(dates)).total_seconds()/60
+        # Use one recorded route point; weather is a local estimate, not route exposure.
+        for point in points:
+            lat,lon=num(first_text(point,'LatitudeDegrees')),num(first_text(point,'LongitudeDegrees'))
+            if lat is not None and lon is not None and -90<=lat<=90 and -180<=lon<=180:
+                row.update(latitude=lat,longitude=lon);break
         rows.append(row)
     if not rows:raise ValueError('TCX contains no Activity records.')
     return pd.DataFrame(rows)
@@ -84,7 +89,7 @@ def tcx(root):
 def gpx(root):
     rows=[]
     for track in (e for e in root if tag(e)=='trk'):
-        dates=[];hearts=[];distance=0.;valid_segments=0
+        dates=[];hearts=[];distance=0.;valid_segments=0;first_point=None
         for segment in (e for e in track if tag(e)=='trkseg'):
             prev=None
             for p in segment:
@@ -95,12 +100,13 @@ def gpx(root):
                 if h is not None:hearts.append(h)
                 lat,lon=num(p.get('lat')),num(p.get('lon'))
                 if lat is None or lon is None or not -90<=lat<=90 or not -180<=lon<=180:prev=None;continue
+                if first_point is None:first_point=(lat,lon)
                 current=(math.radians(lat),math.radians(lon))
                 if prev:
                     a=math.sin((current[0]-prev[0])/2)**2+math.cos(prev[0])*math.cos(current[0])*math.sin((current[1]-prev[1])/2)**2
                     distance+=6371.0088*2*math.asin(math.sqrt(min(1,max(0,a))));valid_segments+=1
                 prev=current
-        rows.append({'timestamp':min(dates) if dates else None,'record_kind':'activity','activity_type':first_text(track,'type'),
+        rows.append({'latitude':first_point[0] if first_point else None,'longitude':first_point[1] if first_point else None,'timestamp':min(dates) if dates else None,'record_kind':'activity','activity_type':first_text(track,'type'),
           'duration_minutes':(max(dates)-min(dates)).total_seconds()/60 if len(dates)>1 else None,
           'distance':distance if valid_segments else None,'heart_rate':sum(hearts)/len(hearts) if hearts else None})
     if not rows:raise ValueError('GPX has no recorded tracks. A planned route alone cannot provide activity duration or heart rate.')

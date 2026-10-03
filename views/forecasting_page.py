@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
+from zoneinfo import ZoneInfo
+
+def _today():
+    return datetime.now(ZoneInfo("Australia/Brisbane")).date()
 from typing import Any
 
 import pandas as pd
@@ -19,7 +23,8 @@ from database.forecasting_repository import (
 )
 from database.recommendation_repository import get_latest_coach_recommendation
 from database.twin_repository import get_athlete_twin_history
-from forecasting.engine import build_forecast_bundle, calculate_cycle_summary
+from forecasting.engine import calculate_cycle_summary
+from forecasting.validated import build_forecast_bundle
 
 
 GENDER_OPTIONS = [
@@ -80,7 +85,7 @@ def _coach_recommendation_text(athlete_id: str) -> str | None:
 
 
 def _display_cycle_summary(history_df: pd.DataFrame) -> None:
-    summary = calculate_cycle_summary(history_df, reference_date=date.today())
+    summary = calculate_cycle_summary(history_df, reference_date=_today())
     metric_columns = st.columns(4)
 
     last_period = summary.get("last_period_start")
@@ -161,8 +166,8 @@ def _render_menstrual_tracking(athlete_id: str) -> pd.DataFrame:
         with left:
             period_start = st.date_input(
                 "Period starting date",
-                value=date.today(),
-                max_value=date.today() + timedelta(days=7),
+                value=_today(),
+                max_value=_today() + timedelta(days=7),
                 key="forecast_period_start",
             )
 
@@ -355,29 +360,13 @@ def _render_menstrual_tracking(athlete_id: str) -> pd.DataFrame:
 
 
 def _render_accuracy_status(score: float | None, data_points: int) -> None:
-    score_text = "Not yet measurable" if score is None else f"{score:.1f}%"
-    first, second, third = st.columns(3)
-    first.metric("Backtested forecast score", score_text)
-    second.metric("Historical daily observations", data_points)
-    third.metric("Forecast horizon", "7 days")
-
-    if score is None:
-        st.warning(
-            "There is not enough history to measure forecast performance yet. "
-            "The page will still provide a baseline forecast, but it must not be "
-            "described as 80% accurate."
-        )
-    elif score >= 80:
-        st.success(
-            "The current rolling-origin backtest meets the 80% MAPE-based "
-            "performance target. This is measured performance, not a permanent guarantee."
-        )
-    else:
-        st.warning(
-            f"The current backtested score is {score:.1f}%, below the 80% target. "
-            "Collect more longitudinal records and improve the model before claiming "
-            "80% forecast performance."
-        )
+    a,b=st.columns(2)
+    a.metric('Dated daily observations',data_points)
+    b.metric('Looking ahead','7 days')
+    with st.expander('How much confidence should I place in this outlook?'):
+        st.write('This is an experimental projection of saved indices, not a validated injury probability or a guaranteed outcome. Forecasts become less dependable further from the latest activity.')
+        st.write('Backtest fit index: '+(f'{score:.1f} / 100' if score is not None else 'Not yet measurable'))
+        st.caption('Derived from historical MAPE error. This index is not the percentage of future predictions that will be correct.')
 
 
 def _latest_history_date(history_df: pd.DataFrame) -> date | None:
@@ -441,7 +430,7 @@ def _prepare_current_forecast_window(
         .sort_values("_forecast_date")
     )
 
-    today = date.today()
+    today = _today()
 
     if latest_observation_date is None:
         display_start = today
@@ -550,7 +539,7 @@ def _render_forecast_window_status(
 
     elif (
         latest_observation_date
-        == date.today()
+        == _today()
     ):
         st.caption(
             (
@@ -783,7 +772,14 @@ def _render_forecast_visualisation(
         chart_df[column] = pd.to_numeric(chart_df[column], errors="coerce")
 
     chart_df = chart_df.set_index("Date")
-    st.line_chart(chart_df[selected_metrics], use_container_width=True)
+    import plotly.graph_objects as go
+    from ui.studio_shell import style_chart
+    figure=go.Figure()
+    for metric in selected_metrics:
+        figure.add_trace(go.Scatter(x=chart_df.index,y=chart_df[metric],mode='lines+markers',name=metric,connectgaps=False,line=dict(width=3)))
+    figure.update_layout(height=440,yaxis_title='Projected index / 100',xaxis_title='Forecast date')
+    figure.update_yaxes(range=[0,100])
+    st.plotly_chart(style_chart(figure),use_container_width=True,theme=None)
 
     summary_columns = [
         column
@@ -829,7 +825,7 @@ def _build_forecast_bundle_cached(
     Cache the expensive multi-model forecast for a short period.
 
     Streamlit reruns the page whenever a widget changes. Without caching,
-    ARIMA, Holt-Winters, regression and rolling-origin evaluation would all
+    Chronological model selection and rolling-origin evaluation would all
     be fitted again on every rerun.
     """
     return build_forecast_bundle(
@@ -844,13 +840,9 @@ def _build_forecast_bundle_cached(
 
 def athlete_forecasting() -> None:
     """Render gender-aware menstrual and general seven-day forecasting."""
-    st.title("Forecasting")
-    st.caption(
-        "Seven-day Digital Twin forecast using multiple linear regression, "
-        "time-series analysis, Holt-Winters when weekly seasonality is detected, "
-        "ARIMA/Box-Jenkins modelling, and validation-weighted forecast combination."
-    )
-
+    from ui.studio_shell import chapter
+    st.title("Your seven-day forecast")
+    chapter("02 / LOOK AHEAD", "Explore projected changes, see how much history supports them, and plan a conversation with your coach.")
     athlete_id = st.session_state.get("user_id")
     if not athlete_id:
         st.error("No logged-in athlete ID was found.")
@@ -869,39 +861,10 @@ def athlete_forecasting() -> None:
 
     gender = _normalise_gender(profile.get("gender"))
 
-    if gender not in GENDER_OPTIONS:
-        st.warning(
-            "Gender is missing from the athlete profile. Save it below so the "
-            "correct forecasting pathway can be selected."
-        )
-        selected_gender = st.selectbox(
-            "Gender",
-            GENDER_OPTIONS,
-            key="forecast_missing_gender",
-        )
-        if st.button("Save gender to profile", type="primary"):
-            try:
-                set_athlete_gender(str(athlete_id), selected_gender)
-            except Exception as exc:
-                st.error(f"Gender could not be saved: {exc}")
-            else:
-                st.success("Gender saved.")
-                st.rerun()
-        return
-
     female_path = gender == "Female"
     male_path = gender == "Male"
-    if female_path:
-        pathway_name = "Menstrual-aware female athlete"
-    elif male_path:
-        pathway_name = "Male athlete"
-    else:
-        pathway_name = "General athlete"
-
-    st.info(
-        f"Forecasting pathway: **{pathway_name}** "
-        f"— profile gender: **{gender}**"
-    )
+    if gender not in GENDER_OPTIONS:
+        st.caption('General forecasting. You can add your profile preferences in Settings; they are not required to continue.')
 
     cycles_df = pd.DataFrame()
     if female_path:
@@ -912,7 +875,7 @@ def athlete_forecasting() -> None:
             key="menstrual_tracking_consent",
             help=(
                 "This controls whether period history is stored and used as an "
-                "additional personal forecasting factor."
+                "optional context alongside your forecast. It does not change risk scores."
             ),
         )
 
@@ -925,7 +888,9 @@ def athlete_forecasting() -> None:
                 st.rerun()
 
         if tracking_enabled:
-            cycles_df = _render_menstrual_tracking(str(athlete_id))
+            from views.athlete.cycle_tracking import render_cycle_tracking
+            with st.expander("My cycle · optional and private", expanded=False):
+                cycles_df = render_cycle_tracking(str(athlete_id))
         else:
             st.info(
                 "Menstrual tracking is disabled. The athlete will receive the "
@@ -939,18 +904,19 @@ def athlete_forecasting() -> None:
     try:
         history_df = get_athlete_twin_history(str(athlete_id))
         from research_prediction.history import comparable_history
+        raw_forecast_history = history_df.copy()
         history_df = comparable_history(history_df)
+        from ui.forecast_data_check import render_data_check
+        render_data_check(raw_forecast_history, history_df)
         if not history_df.empty and 'model_version' in history_df and history_df.model_version.notna().any():
             st.info('Forecast input uses dated research estimates with the same model version, input tier and event. These projections have not been externally validated.')
     except Exception as exc:
         st.error(f"Digital Twin history could not be loaded: {exc}")
         return
 
-    if history_df is None or history_df.empty:
-        st.info(
-            "No Digital Twin history is available. Upload and save Garmin data "
-            "before generating a forecast."
-        )
+    if history_df is None or history_df.empty or history_df['timestamp'].dt.floor('D').nunique() < 3:
+        from ui.first_upload_forecast import render_first_upload_forecast
+        render_first_upload_forecast(athlete_id)
         return
 
     coach_text = _coach_recommendation_text(str(athlete_id))
@@ -965,7 +931,7 @@ def athlete_forecasting() -> None:
         )
     )
 
-    today = date.today()
+    today = _today()
 
     if latest_observation_date is None:
         first_engine_forecast_date = today
@@ -1035,17 +1001,16 @@ def athlete_forecasting() -> None:
         else gender
     )
 
-    cycles_for_model = (
-        cycles_df
-        if female_path
-        else None
-    )
+    # Context remains visible privately; no unvalidated cycle adjustment to risk.
+    cycles_for_model = None
+    if female_path and not cycles_df.empty:
+        st.caption("Your period dates are saved privately. Numeric projections currently use activity history only; a validated cycle-aware model is not available.")
 
     try:
         with st.spinner(
             (
                 "Generating the current seven-day forecast. "
-                "The model is validating regression and time-series "
+                "The model is comparing baseline and time-series "
                 "methods before displaying the results..."
             )
         ):
@@ -1090,36 +1055,8 @@ def athlete_forecasting() -> None:
         )
         return
 
-    _render_accuracy_status(
-        score=bundle.overall_validation_score,
-        data_points=bundle.data_points,
-    )
-
-    _render_forecast_table(
-        forecast_table,
-        female_path=female_path,
-    )
-
-    _render_forecast_visualisation(
-        forecast_table,
-        female_path=female_path,
-    )
-
-    with st.expander("Model evaluation and forecast-combination details"):
-        st.markdown(
-            "The model is evaluated with rolling-origin backtesting. MAE, MSE, "
-            "RMSE and MAPE are calculated separately for every forecast target. "
-            "Combination weights are based on inverse validation RMSE."
-        )
-
-        if bundle.evaluation is not None and not bundle.evaluation.empty:
-            st.dataframe(bundle.evaluation, use_container_width=True, hide_index=True)
-        else:
-            st.info("More historical observations are required for model evaluation.")
-
-        if bundle.model_weights is not None and not bundle.model_weights.empty:
-            st.markdown("##### Forecast-combination weights")
-            st.dataframe(bundle.model_weights, use_container_width=True, hide_index=True)
+    from ui.forecast_horizon import render_forecast_horizon
+    render_forecast_horizon(forecast_table, bundle)
 
     if st.button(
         "Save this forecast run",
@@ -1130,7 +1067,7 @@ def athlete_forecasting() -> None:
             run_id = save_forecast_run(
                 athlete_id=str(athlete_id),
                 gender_path=(
-                    "menstrual-aware"
+                    "general"
                     if female_path
                     else "male"
                     if male_path

@@ -1,3 +1,4 @@
+from database.access_control import guard_athlete_read
 from utils.performance import request_cached, invalidate_reads
 from database.connection import get_connection
 import pandas as pd
@@ -24,6 +25,7 @@ def save_uploaded_file(athlete_id, filename, file_type, rows_extracted):
     return upload_id
 
 
+@guard_athlete_read
 @request_cached
 def get_latest_twin_state(athlete_id):
     from database.workflow_repository import list_uploads
@@ -153,6 +155,7 @@ def save_digital_twin_states(athlete_id, upload_id, df):
     conn.close()
 
 
+@guard_athlete_read
 @request_cached
 def get_athlete_twin_history(athlete_id):
     """Merge legacy rows and current saved snapshots without writing derived values as sensors."""

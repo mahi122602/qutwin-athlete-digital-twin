@@ -40,6 +40,8 @@ def read_raw(name,data,options=None):
         from fitparse import FitFile
         sessions=[m.get_values() for m in FitFile(io.BytesIO(data)).get_messages('session')]
         frame=pd.DataFrame([{'timestamp':s.get('start_time'),'heart_rate':s.get('avg_heart_rate'),
+            'latitude':s.get('start_position_lat')*180/2**31 if s.get('start_position_lat') is not None else None,
+            'longitude':s.get('start_position_long')*180/2**31 if s.get('start_position_long') is not None else None,
             'duration_minutes':s.get('total_timer_time')/60 if s.get('total_timer_time') is not None else None,
             'distance':s.get('total_distance')/1000 if s.get('total_distance') is not None else None,
             'activity_type':str(s.get('sport') or ''),'record_kind':'activity'} for s in sessions])

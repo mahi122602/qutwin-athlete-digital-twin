@@ -85,6 +85,11 @@ def _request_management_page(role):
     role = str(role).title()
 
     if role == "Athlete":
+        from views.athlete.privacy_controls import render_connections
+        render_connections()
+
+
+    if role == "Athlete":
         target_role = "Coach"
         target_label = "Coach ID"
 

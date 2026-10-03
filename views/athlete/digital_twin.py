@@ -2,6 +2,8 @@ import streamlit as st
 from database.upload_history_repository import get_upload_history as get_athlete_twin_history
 
 def athlete_dashboard():
+    from ui.studio_shell import chapter
+    chapter('YOUR TWIN / LATEST SAVED STATE','A snapshot of your most recent upload. Open Assessment for the evidence and your coach’s recommendation.')
 
     st.title(
         "Digital Twin Dashboard"

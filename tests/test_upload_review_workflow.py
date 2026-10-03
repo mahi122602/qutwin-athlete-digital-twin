@@ -216,6 +216,7 @@ def test_uploader_renders_missing_inputs_and_saves(monkeypatch):
     from streamlit.testing.v1 import AppTest
     import streamlit as st
     import views.athlete.upload as page
+    monkeypatch.setattr(page,'location_settings',lambda _: ({},'Unknown'))
     uploaded=Upload('measurements.csv',b'timestamp,steps\n2026-09-01,4000\n')
     uploaded.size=len(uploaded.getvalue())
     monkeypatch.setattr(st,'file_uploader',lambda *a,**k:[uploaded])
@@ -229,7 +230,7 @@ upload_garmin_data()
     app=AppTest.from_string(code).run()
     assert not app.exception
     app.multiselect[0].select('100 m').run()
-    next(x for x in app.selectbox if x.label=='Event assignment').select('100 m').run()
+    assert not any(x.label=='Event assignment' for x in app.selectbox)
     assert not app.exception
     process=next(b for b in app.button if b.label=='Upload and proceed')
     assert not process.disabled
@@ -275,13 +276,3 @@ def test_coach_ui_modification(monkeypatch):
     app.button[0].click().run()
     assert not app.exception
     assert calls==[('coach1',1,'Modified','My revised plan')]
-
-def test_automatic_retry_cooldown(db):
-    upload_id=saved()['id']
-    _,token=repo.claim_ai('athlete1',upload_id)
-    repo.finish_ai('athlete1',upload_id,token,error='Temporary outage')
-    assert repo.claim_ai('athlete1',upload_id)==(None,None)
-    db.execute("UPDATE qutwin_processed_uploads SET ai_started_at=datetime('now','-6 minutes') WHERE id=?",(upload_id,))
-    db.commit()
-    upload,token=repo.claim_ai('athlete1',upload_id)
-    assert upload and token

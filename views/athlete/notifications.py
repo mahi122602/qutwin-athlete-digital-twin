@@ -4,6 +4,8 @@ from database.connection_request_repository import get_notifications, get_unread
 from views.athlete.account_helpers import _notification_destination, _notification_icon
 
 def athlete_notifications_page():
+    from ui.studio_shell import chapter
+    chapter('INBOX / WHAT NEEDS YOU','Coach invitations, reviewed recommendations and activity updates, together in one place.')
     """
     Dedicated Athlete Notifications page.
 

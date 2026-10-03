@@ -1,133 +1,24 @@
 import streamlit as st
+from ui.studio_shell import chapter
 from views.athlete.account_helpers import perform_logout
 
 def athlete_settings_page():
-    """
-    Basic Athlete account/settings screen.
-    """
-
-    athlete_id = str(
-        st.session_state.user_id
-    )
-
-    st.title(
-        "Settings"
-    )
-
-    st.caption(
-        "Manage your account and Athlete Dashboard preferences."
-    )
-
-    account_tab, notifications_tab, privacy_tab = (
-        st.tabs(
-            [
-                "Account",
-                "Notifications",
-                "Privacy & Security",
-            ]
-        )
-    )
-
-    # ========================================================
-    # ACCOUNT
-    # ========================================================
-
-    with account_tab:
-
-        st.subheader(
-            "Account"
-        )
-
-        st.write(
-            f"**Athlete ID:** {athlete_id}"
-        )
-
-        st.write(
-            "**Role:** Athlete"
-        )
-
-        st.caption(
-            "Profile information can be edited "
-            "from your Athlete Profile page."
-        )
-
-        if st.button(
-            "Open Profile",
-            key="settings_open_profile",
-            type="primary",
-        ):
-
-            st.session_state.current_page = (
-                "Profile"
-            )
-
-            st.rerun()
-
-    # ========================================================
-    # NOTIFICATION SETTINGS
-    # ========================================================
-
-    with notifications_tab:
-
-        st.subheader(
-            "Notification Preferences"
-        )
-
-        st.caption(
-            "These preferences currently apply "
-            "to this Streamlit session."
-        )
-
-        st.toggle(
-            "Connection request notifications",
-            value=True,
-            key="setting_connection_notifications",
-        )
-
-        st.toggle(
-            "Coach recommendation notifications",
-            value=True,
-            key="setting_coach_notifications",
-        )
-
-        st.toggle(
-            "Injury risk alerts",
-            value=True,
-            key="setting_risk_notifications",
-        )
-
-        st.toggle(
-            "Digital Twin status updates",
-            value=True,
-            key="setting_twin_notifications",
-        )
-
-    # ========================================================
-    # PRIVACY / SECURITY
-    # ========================================================
-
-    with privacy_tab:
-
-        st.subheader(
-            "Privacy & Security"
-        )
-
-        st.write(
-            "Your Athlete account is authenticated "
-            "before access to your Digital Twin data."
-        )
-
-        st.caption(
-            "Use Logout whenever you finish using "
-            "QUTwin on a shared device."
-        )
-
-        st.divider()
-
-        if st.button(
-            "Logout",
-            key="settings_logout",
-            type="primary",
-        ):
-
-            perform_logout()
+    st.title('Make it yours')
+    chapter('PREFERENCES / YOUR SPACE','Choose your studio appearance and manage your account. Your activity stays saved when you log out.')
+    with st.container(border=True):
+        st.subheader('Appearance')
+        st.caption('Choose Dawn or Dusk on your dashboard. Your choice follows you through every athlete page in this session.')
+    with st.container(border=True):
+        st.subheader('Profile preferences')
+        from database.forecasting_repository import get_forecasting_profile,set_athlete_gender,ensure_forecasting_schema
+        try:
+            ensure_forecasting_schema();profile=get_forecasting_profile(str(st.session_state.user_id))
+            options=['Prefer not to say','Female','Male','Non-binary']
+            current=profile.get('gender');choice=st.selectbox('Gender (optional)',options,index=options.index(current) if current in options else 0)
+            st.caption('Female profiles can opt into private period tracking on Forecasting. General forecasts are available without it.')
+            if st.button('Save profile preference'):set_athlete_gender(str(st.session_state.user_id),choice);st.success('Preference saved.')
+        except Exception:st.info('Profile preferences are temporarily unavailable.')
+    left,right=st.columns(2)
+    if left.button('Open my profile',use_container_width=True):st.session_state.current_page='Profile';st.rerun()
+    if right.button('Log out',use_container_width=True):perform_logout()
+    st.caption('Account deletion is available in My profile, with password verification and a permanent-deletion confirmation.')
