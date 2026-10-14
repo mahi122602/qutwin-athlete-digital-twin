@@ -12,7 +12,10 @@ def get_connection():
     2. DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT
        Used when individual environment variables are supplied.
 
-    3. Local config.py
+    3. Top-level Streamlit secrets (DATABASE_URL or complete DB_* fields)
+       Used for local or hosted Streamlit configuration.
+
+    4. Local config.py
        Used only for local development.
     """
 
@@ -44,8 +47,24 @@ def get_connection():
         )
 
 
+    # Resolve Streamlit secrets explicitly. Root secrets are not loaded until
+    # first access; relying on their environment export could switch DBs mid-run.
+    try:
+        import streamlit as st
+        secrets = st.secrets
+        secret_url = secrets.get('DATABASE_URL')
+        if secret_url:
+            return connect(str(secret_url))
+        secret_fields = {key: secrets.get('DB_' + key) for key in ('HOST', 'NAME', 'USER', 'PASSWORD')}
+        if all(secret_fields.values()):
+            return connect(host=secret_fields['HOST'], database=secret_fields['NAME'],
+                user=secret_fields['USER'], password=secret_fields['PASSWORD'],
+                port=secrets.get('DB_PORT', '5432'))
+    except (ImportError, FileNotFoundError, KeyError):
+        pass
+
     # -----------------------------------------
-    # 3. Local development fallback
+    # 4. Local development fallback
     # -----------------------------------------
     try:
         from config import DB_CONFIG

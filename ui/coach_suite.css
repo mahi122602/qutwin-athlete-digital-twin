@@ -1,0 +1,59 @@
+/* Shared coach-only CSS, loaded only inside the authenticated coach portal. */
+header[data-testid="stHeader"],section[data-testid="stSidebar"], [data-testid="collapsedControl"]{display:none!important}
+.stApp,[data-testid="stAppViewContainer"]{background:transparent!important;color:var(--cs-ink)!important}
+.cs-scene{position:fixed;inset:0;z-index:0;pointer-events:none;background:#173b32}
+.cs-scene>div{position:absolute;inset:0;background-size:cover;background-position:left center;transition:opacity .7s ease;will-change:opacity}
+.cs-scene-dawn{opacity:1}.cs-scene-dusk{opacity:0}.cs-scene.dusk .cs-scene-dawn{opacity:0}.cs-scene.dusk .cs-scene-dusk{opacity:1}
+[data-testid="stMainBlockContainer"]{padding:0 2.2vw 4rem!important;max-width:1920px!important;position:relative;z-index:1}
+.st-key-coach_studio_nav{position:sticky;top:0;z-index:100;background:var(--cs-nav);border-bottom:1px solid var(--cs-line);padding:10px 20px!important;backdrop-filter:blur(14px);border-radius:0 0 14px 14px;margin-bottom:26px;transition:background .5s,color .5s}
+.cs-brand{font:600 32px Georgia,serif;letter-spacing:-1.5px;color:var(--cs-ink)}
+.cs-wordmark{text-align:center;font:18px Georgia,serif;letter-spacing:3px;color:var(--cs-ink)}
+[class*="st-key-cs_page_"]{margin-left:23%!important;width:77%!important;max-width:77%!important;min-height:65vh;background:var(--cs-surface);border:1px solid var(--cs-line);padding:clamp(20px,2.4vw,42px)!important;border-radius:14px;box-shadow:0 18px 60px #041a1926;animation:cs-arrive .45s cubic-bezier(.2,.65,.3,1);transition:background-color .5s,color .5s,border-color .5s}
+@keyframes cs-arrive{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.cs-heading h1{font:500 clamp(32px,3.2vw,52px)/1.12 Georgia,serif!important;letter-spacing:-1.6px;margin:0 0 12px;color:var(--cs-ink)!important}
+.cs-heading p{font-size:18px!important;line-height:1.6;color:var(--cs-muted);margin:0 0 24px}
+[class*="st-key-cs_page_"] p,[class*="st-key-cs_page_"] label,[class*="st-key-cs_page_"] li{font-size:17px!important;line-height:1.6;color:var(--cs-ink)!important}
+[class*="st-key-cs_page_"] h2,[class*="st-key-cs_page_"] h3{font-family:Georgia,serif!important;color:var(--cs-ink)!important}
+[class*="st-key-cs_page_"] [data-testid="stCaptionContainer"] p{font-size:14px!important;color:var(--cs-muted)!important}
+.stButton>button,[data-testid="stFormSubmitButton"]>button,[data-testid="stPopover"]>button{min-height:46px;border-radius:9px!important;border:1px solid var(--cs-line)!important;background:var(--cs-input)!important;color:var(--cs-ink)!important;box-shadow:none!important;transition:transform .18s,box-shadow .18s,background .35s}
+button p{color:inherit!important;font-size:16px!important}.stButton>button:hover,[data-testid="stFormSubmitButton"]>button:hover{transform:translateY(-2px);border-color:var(--cs-accent)!important;box-shadow:0 6px 16px #00000015!important}
+button[kind="primary"],[data-testid="stBaseButton-primary"]{background:linear-gradient(135deg,#b97148,#7e4328)!important;color:#fffaf3!important;border-color:#ae7654!important}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--cs-accent)!important;outline-offset:3px}
+[data-baseweb="select"]>div,[data-baseweb="input"],[data-baseweb="base-input"],input,textarea,[data-baseweb="textarea"]{background:var(--cs-input)!important;color:var(--cs-ink)!important;border-color:var(--cs-line)!important;font-size:17px!important}
+[data-baseweb="popover"],[role="listbox"],[role="option"],[data-baseweb="menu"]{background:var(--cs-input)!important;color:var(--cs-ink)!important;font-size:17px!important}
+[role="option"]:hover{background:var(--qs-soft)!important}input::placeholder,textarea::placeholder{color:var(--cs-muted)!important;opacity:1}
+[data-testid="stMetric"]{padding:16px;border:1px solid var(--cs-line);background:var(--cs-input);border-radius:12px;color:var(--cs-ink)}
+[data-testid="stMetricValue"]{color:var(--cs-ink)!important;font-size:32px!important}
+[data-testid="stExpander"],[data-testid="stForm"],[data-testid="stVerticalBlockBorderWrapper"]>div{border-color:var(--cs-line)!important}
+[data-testid="stAlert"]{background:var(--cs-input)!important;color:var(--cs-ink)!important;border:1px solid var(--cs-line)}
+.cs-badge{display:inline-flex;align-items:center;gap:8px;font-size:16px;font-weight:600;color:var(--cs-muted)}.cs-badge i{width:10px;height:10px;border-radius:50%;background:currentColor;flex:none}.cs-badge.high{color:var(--cs-high)}.cs-badge.medium{color:var(--cs-medium)}.cs-badge.low{color:var(--cs-low)}
+.cs-attention{border:1px solid var(--cs-line);border-top:3px solid var(--cs-muted);border-radius:12px;padding:22px;background:var(--cs-input);transition:transform .22s,box-shadow .22s}
+.cs-attention.high{border-top-color:var(--cs-high)}.cs-attention.medium{border-top-color:var(--cs-medium)}.cs-attention.low{border-top-color:var(--cs-low)}
+.cs-attention strong{display:block;font:44px Georgia,serif;margin:14px 0;color:var(--cs-ink)}.cs-attention p{font-size:15px!important;color:var(--cs-muted)!important;margin:0}
+@media(hover:hover) and (pointer:fine){.cs-attention:hover{transform:perspective(1000px) rotateX(2deg) translateY(-3px);box-shadow:0 12px 25px #001c1620}}
+[class*="st-key-cs_row_"]{padding:14px 8px;border-bottom:1px solid var(--cs-line);transition:background .2s}
+[class*="st-key-cs_row_"]:hover{background:var(--qs-soft)}
+.cs-table-head{font-size:14px;font-weight:700;color:var(--cs-muted);padding:6px 0 10px}.cs-name{font-size:17px;font-weight:600;line-height:1.4;color:var(--cs-ink)}.cs-sub{font-size:14px;color:var(--cs-muted);line-height:1.6}
+.st-key-csbell button,.st-key-csprofile button{border-radius:50%!important}
+@media(max-width:1000px){[class*="st-key-cs_page_"]{margin-left:17%!important;width:83%!important;max-width:83%!important;padding:22px!important}.cs-scene>div{background-position:15% center}.cs-wordmark{letter-spacing:1px}}
+@media(max-width:700px){[data-testid="stMainBlockContainer"]{padding:0 12px 24px!important}[class*="st-key-cs_page_"]{margin-left:0!important;width:100%!important;max-width:100%!important;margin-top:150px;padding:20px!important}.st-key-coach_studio_nav{position:relative;padding:10px!important}.cs-scene>div{background-position:20% top;background-size:auto 100vh}.cs-wordmark{display:none}.cs-heading h1{font-size:34px!important}.cs-brand{font-size:28px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.cs-attention:hover,.stButton>button:hover{transform:none!important}}
+
+/* Override the athlete suite's more-specific button selectors inside this portal. */
+[data-testid="stButton"] button,[data-testid="stDownloadButton"] button{border-radius:9px!important;background:var(--cs-input)!important;color:var(--cs-ink)!important}
+[data-testid="stButton"] button[kind="primary"]{background:linear-gradient(135deg,#b97148,#7e4328)!important;color:#fffaf3!important}
+.st-key-csprofile [data-testid="stButton"] button,.st-key-csbell [data-testid="stButton"] button{border-radius:50%!important}
+
+/* One shared top bar, including native nested popover wrappers. */
+.st-key-coach_studio_nav [data-testid="stPopover"] button,
+.st-key-coach_studio_nav [data-testid="stPopoverButton"],
+.st-key-coach_studio_nav button[data-testid="stBaseButton-popoverTrigger"]{background:var(--cs-input)!important;color:var(--cs-ink)!important;border:1px solid var(--cs-line)!important;min-height:46px;border-radius:9px!important}
+.st-key-coach_studio_nav button svg,.st-key-coach_studio_nav button p,.st-key-coach_studio_nav button span{color:inherit!important}
+.st-key-coach_studio_nav button{font-size:14px!important;white-space:nowrap;padding-left:8px!important;padding-right:8px!important}
+.st-key-coach_studio_nav [data-testid="stHorizontalBlock"]{gap:9px!important}
+/* The main dashboard has its own full-width scene, not the supporting-page panel. */
+[class*="st-key-cs_page_Dashboard_"]{margin-left:0!important;width:100%!important;max-width:100%!important;padding:0!important;min-height:0;background:transparent!important;border:0!important;box-shadow:none!important}
+iframe[title*="qutwin_coach_dashboard"]{display:block;border:0;width:100%}
+.cs-scene.home{background:var(--qs-bg)}.cs-scene.home>div{display:none}
+[data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"]{max-width:1920px!important;padding:0 2.2vw 4rem!important}
+@media(max-width:1000px){.st-key-coach_studio_nav .cs-brand{font-size:24px}.st-key-coach_studio_nav button p{font-size:12px!important}}

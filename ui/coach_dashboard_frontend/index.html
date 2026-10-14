@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="studio.css"><title>Coach Studio</title></head>
+<body>
+<main class="stage" id="stage">
+  <section class="hero"><span class="eyebrow">YOUR COACHING STUDIO</span>
+    <h1>Every athlete.<br>A clearer next step.</h1>
+    <p class="welcome" id="welcome"></p><p class="overview" id="overview"></p>
+  </section>
+  <section class="teams panel"><div class="panel-title"><h2>Your teams, at a glance</h2><button data-action="teams" class="link">All teams ↗</button></div>
+    <div id="teams-list"></div>
+  </section>
+  <div class="right-column">
+    <section class="attention panel"><h2>Your attention, today</h2><div id="attention-list"></div><p class="unknown" id="unknown"></p>
+      <small>Review priorities · not injury probabilities</small>
+    </section>
+    <section class="inbox panel"><h2>Coach’s inbox</h2><div id="inbox-list"></div>
+      <button data-action="reviews" class="primary">Review recommendations →</button>
+    </section>
+    <section class="search panel"><div class="panel-title"><h2>Find your athlete</h2><button data-action="athletes" class="link">All athletes ↗</button></div>
+      <label class="search-field"><span aria-hidden="true">⌕</span><input id="search" type="search" autocomplete="off" aria-label="Search connected athletes" placeholder="Search connected athletes…"></label>
+      <div id="suggestions" class="suggestions" hidden></div>
+    </section>
+  </div>
+  <aside id="unavailable" class="unavailable" hidden></aside>
+</main><script src="studio.js"></script></body></html>

@@ -1,0 +1,109 @@
+/* Dawn only: shell() omits this stylesheet completely in Dusk. */
+/* Popover triggers have a nested wrapper in Streamlit; a direct-child
+   selector misses that button and leaves its native dark background. */
+.st-key-coach_studio_nav button,
+[data-testid="stPopover"] button,
+[data-testid="stPopoverButton"] button,
+button[data-testid="stPopoverButton"],
+[data-testid="stBaseButton-popoverTrigger"] {
+  background:#fffdf8!important;
+  color:#173b32!important;
+  border:1px solid #c5d2c8!important;
+  border-radius:9px!important;
+  min-height:46px;
+  box-shadow:none!important;
+}
+.st-key-coach_studio_nav button p,
+.st-key-coach_studio_nav button span,
+.st-key-coach_studio_nav button svg,
+[data-testid="stPopover"] button p,
+[data-testid="stPopover"] button span,
+[data-testid="stPopover"] button svg,
+[data-testid="stPopoverButton"] p,
+[data-testid="stPopoverButton"] span,
+[data-testid="stPopoverButton"] svg {
+  color:inherit!important;
+}
+.st-key-coach_studio_nav button:hover,
+.st-key-coach_studio_nav button[aria-expanded="true"],
+[data-testid="stPopover"] button:hover,
+[data-testid="stPopoverButton"]:hover {
+  background:#edf3eb!important;
+  color:#173b32!important;
+  border-color:#99582e!important;
+}
+/* The menu is mounted outside the navigation container. */
+[data-testid="stPopoverBody"],
+[data-testid="stPopoverBody"]>div,
+[data-baseweb="popover"]>div,
+[data-baseweb="popover"] [data-baseweb="menu"],
+[role="listbox"],
+[data-baseweb="menu"] {
+  background:#fffdf8!important;
+  color:#173b32!important;
+  border-color:#c5d2c8!important;
+}
+[data-testid="stPopoverBody"] p,
+[data-testid="stPopoverBody"] label,
+[data-testid="stPopoverBody"] span,
+[data-baseweb="menu"] li,
+[role="option"],
+[role="option"] div,
+[role="option"] span,
+[data-baseweb="select"] div,
+[data-baseweb="select"] span {
+  color:#173b32!important;
+}
+[data-testid="stPopoverBody"] button {
+  background:#fffdf8!important;
+  color:#173b32!important;
+  border:1px solid #c5d2c8!important;
+}
+[data-testid="stPopoverBody"] button p,
+[data-testid="stPopoverBody"] button span,
+[data-testid="stPopoverBody"] button svg {color:inherit!important}
+[data-testid="stPopoverBody"] button:hover,
+[role="option"]:hover,
+[role="option"][aria-selected="true"] {
+  background:#edf3eb!important;
+  color:#173b32!important;
+}
+[data-baseweb="select"] svg {color:#173b32!important}
+input,textarea,[data-baseweb="select"] input {
+  color:#173b32!important;
+  -webkit-text-fill-color:#173b32!important;
+  caret-color:#173b32;
+}
+input::placeholder,textarea::placeholder {
+  color:#51665e!important;
+  -webkit-text-fill-color:#51665e!important;
+  opacity:1;
+}
+/* Solid, readable text on the Dawn copper action gradient. */
+[data-testid="stButton"] button[kind="primary"],
+[data-testid="stFormSubmitButton"] button[kind="primary"] {
+  background:linear-gradient(135deg,#8f4e2c,#71381e)!important;
+  color:#fffdf8!important;
+}
+[data-testid="stButton"] button[kind="primary"] p,
+[data-testid="stFormSubmitButton"] button[kind="primary"] p {
+  color:#fffdf8!important;
+}
+/* Active top-level page is forest green; all inactive items stay ivory. */
+.st-key-coach_studio_nav [data-testid="stButton"] button[kind="primary"],
+.st-key-coach_studio_nav [data-testid="stBaseButton-primary"] {
+  background:#173b32!important;
+  color:#fffdf8!important;
+  border-color:#173b32!important;
+}
+.st-key-coach_studio_nav button:focus-visible,
+[data-testid="stPopoverBody"] button:focus-visible {
+  outline:3px solid #99582e!important;
+  outline-offset:3px;
+}
+.st-key-coach_studio_nav button:disabled,
+[data-testid="stPopoverBody"] button:disabled {
+  background:#f0f1e9!important;
+  color:#68776f!important;
+  border-color:#d6ddd3!important;
+}
