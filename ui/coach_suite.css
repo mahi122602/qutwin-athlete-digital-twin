@@ -1,11 +1,15 @@
 /* Shared coach-only CSS, loaded only inside the authenticated coach portal. */
+:root{--cs-nav-height:76px}
 header[data-testid="stHeader"],section[data-testid="stSidebar"], [data-testid="collapsedControl"]{display:none!important}
 .stApp,[data-testid="stAppViewContainer"]{background:transparent!important;color:var(--cs-ink)!important}
 .cs-scene{position:fixed;inset:0;z-index:0;pointer-events:none;background:#173b32}
 .cs-scene>div{position:absolute;inset:0;background-size:cover;background-position:left center;transition:opacity .7s ease;will-change:opacity}
 .cs-scene-dawn{opacity:1}.cs-scene-dusk{opacity:0}.cs-scene.dusk .cs-scene-dawn{opacity:0}.cs-scene.dusk .cs-scene-dusk{opacity:1}
-[data-testid="stMainBlockContainer"]{padding:0 2.2vw 4rem!important;max-width:1920px!important;position:relative;z-index:1}
-.st-key-coach_studio_nav{position:sticky;top:0;z-index:100;background:var(--cs-nav);border-bottom:1px solid var(--cs-line);padding:10px 20px!important;backdrop-filter:blur(14px);border-radius:0 0 14px 14px;margin-bottom:26px;transition:background .5s,color .5s}
+[data-testid="stMainBlockContainer"]{padding:var(--cs-nav-height) 2.2vw 4rem!important;max-width:1920px!important;position:relative;z-index:1}
+/* The bar is anchored to the viewport, independent of page padding and scroll. */
+.st-key-coach_studio_nav{position:fixed!important;inset:0 0 auto 0!important;width:100%!important;max-width:none!important;height:var(--cs-nav-height)!important;min-height:var(--cs-nav-height)!important;box-sizing:border-box;z-index:1000;background:var(--cs-nav);border-bottom:1px solid var(--cs-line);padding:10px 2.2vw!important;backdrop-filter:blur(14px);border-radius:0!important;margin:0!important;gap:0!important;justify-content:center;transition:background .5s,color .5s}
+/* Zero-height style/nav wrappers must not add empty rows above the page. */
+[data-testid="stMainBlockContainer"]:has(.st-key-coach_studio_nav)>[data-testid="stVerticalBlock"]{gap:0!important}
 .cs-brand{font:600 32px Georgia,serif;letter-spacing:-1.5px;color:var(--cs-ink)}
 .cs-wordmark{text-align:center;font:18px Georgia,serif;letter-spacing:3px;color:var(--cs-ink)}
 [class*="st-key-cs_page_"]{margin-left:23%!important;width:77%!important;max-width:77%!important;min-height:65vh;background:var(--cs-surface);border:1px solid var(--cs-line);padding:clamp(20px,2.4vw,42px)!important;border-radius:14px;box-shadow:0 18px 60px #041a1926;animation:cs-arrive .45s cubic-bezier(.2,.65,.3,1);transition:background-color .5s,color .5s,border-color .5s}
@@ -36,7 +40,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .cs-table-head{font-size:14px;font-weight:700;color:var(--cs-muted);padding:6px 0 10px}.cs-name{font-size:17px;font-weight:600;line-height:1.4;color:var(--cs-ink)}.cs-sub{font-size:14px;color:var(--cs-muted);line-height:1.6}
 .st-key-csbell button,.st-key-csprofile button{border-radius:50%!important}
 @media(max-width:1000px){[class*="st-key-cs_page_"]{margin-left:17%!important;width:83%!important;max-width:83%!important;padding:22px!important}.cs-scene>div{background-position:15% center}.cs-wordmark{letter-spacing:1px}}
-@media(max-width:700px){[data-testid="stMainBlockContainer"]{padding:0 12px 24px!important}[class*="st-key-cs_page_"]{margin-left:0!important;width:100%!important;max-width:100%!important;margin-top:150px;padding:20px!important}.st-key-coach_studio_nav{position:relative;padding:10px!important}.cs-scene>div{background-position:20% top;background-size:auto 100vh}.cs-wordmark{display:none}.cs-heading h1{font-size:34px!important}.cs-brand{font-size:28px}}
+@media(max-width:700px){[data-testid="stMainBlockContainer"]{padding:var(--cs-nav-height) 12px 24px!important}[class*="st-key-cs_page_"]{margin-left:0!important;width:100%!important;max-width:100%!important;margin-top:0;padding:20px!important}.cs-scene>div{background-position:20% top;background-size:auto 100vh}.cs-wordmark{display:none}.cs-heading h1{font-size:34px!important}.cs-brand{font-size:28px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.cs-attention:hover,.stButton>button:hover{transform:none!important}}
 
 /* Override the athlete suite's more-specific button selectors inside this portal. */
@@ -55,5 +59,38 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 [class*="st-key-cs_page_Dashboard_"]{margin-left:0!important;width:100%!important;max-width:100%!important;padding:0!important;min-height:0;background:transparent!important;border:0!important;box-shadow:none!important}
 iframe[title*="qutwin_coach_dashboard"]{display:block;border:0;width:100%}
 .cs-scene.home{background:var(--qs-bg)}.cs-scene.home>div{display:none}
-[data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"]{max-width:1920px!important;padding:0 2.2vw 4rem!important}
-@media(max-width:1000px){.st-key-coach_studio_nav .cs-brand{font-size:24px}.st-key-coach_studio_nav button p{font-size:12px!important}}
+[data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"]{max-width:1920px!important;padding:var(--cs-nav-height) 2.2vw 4rem!important}
+@media(max-width:1000px){:root{--cs-nav-height:84px}.st-key-coach_studio_nav{padding:8px 12px!important;overflow-x:auto!important;overflow-y:hidden!important;overscroll-behavior-x:contain}.st-key-coach_studio_nav .cs-brand{font-size:24px}.st-key-coach_studio_nav button p{font-size:12px!important}.st-key-coach_studio_nav [data-testid="stHorizontalBlock"]{flex-wrap:nowrap!important;min-width:1000px}.st-key-coach_studio_nav [data-testid="stColumn"]{min-width:0!important}}
+@media(max-width:700px){[data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"]{padding:var(--cs-nav-height) 12px 24px!important}}
+
+/* coach-photo-gap-v2-20261018: loaded from disk on each page render.
+   Keep this more specific than previously imported Python layout rules. */
+:root{--cs-content-gap:24px}
+[data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"]:has(.st-key-coach_studio_nav){
+  padding:calc(var(--cs-nav-height,76px) + var(--cs-content-gap)) 2.2vw 4rem!important;
+}
+.cs-scene:not(.home){
+  position:fixed!important;inset:var(--cs-nav-height,76px) 0 0 0!important;
+  z-index:0!important;pointer-events:none!important;
+}
+.cs-scene:not(.home)>div{
+  background-size:cover!important;background-position:left top!important;
+  background-repeat:no-repeat!important;
+}
+.cs-scene:not(.home)>div::after{
+  content:"";position:absolute;inset:0 auto 0 0;pointer-events:none;
+  width:calc((100vh - var(--cs-nav-height,76px)) * 1.5);max-width:100%;
+  background-image:inherit;background-size:auto 100%;
+  background-position:left top;background-repeat:no-repeat;
+  -webkit-mask-image:linear-gradient(to right,#000 70%,transparent 100%);
+  mask-image:linear-gradient(to right,#000 70%,transparent 100%);
+}
+[class*="st-key-cs_page_"]:not([class*="st-key-cs_page_Dashboard_"]){
+  border-radius:18px!important;
+}
+@media(max-width:700px){
+  :root{--cs-content-gap:16px}
+  [data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"]:has(.st-key-coach_studio_nav){
+    padding:calc(var(--cs-nav-height,84px) + var(--cs-content-gap)) 12px 24px!important;
+  }
+}
