@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en" data-theme="dawn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>QUTwin · Your performance studio</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="scene" aria-label="A continuous view of the QUTwin training landscape"></canvas>
+  <div id="fallback" hidden></div>
+  <div class="vignette" aria-hidden="true"></div>
+  <header class="site-header">
+    <button class="brand" id="brand-home" aria-label="QUTwin home">QUTwin<span>YOUR PERFORMANCE STUDIO</span></button>
+    <div class="header-actions">
+      <button class="subtle motion" id="motion" aria-pressed="false">Reduce motion</button>
+      <button class="theme" id="theme" aria-label="Switch to dusk theme">☀ <span>Dawn</span></button>
+    </div>
+  </header>
+  <main id="screens">
+    <section class="screen active" id="arrive" aria-labelledby="arrive-title">
+      <div class="arrival-copy">
+        <p class="eyebrow">A SPACE FOR YOUR TRAINING JOURNEY</p>
+        <h1 id="arrive-title">Your next chapter.</h1>
+        <p class="arrival-subtitle">Better together. Ready for what’s next.</p>
+        <div class="arrival-actions">
+          <button class="primary" data-go="signin">Sign in <span aria-hidden="true">→</span></button>
+          <button class="secondary" data-go="account">Create account <span aria-hidden="true">↗</span></button>
+        </div>
+      </div>
+      <div class="corner left">PEOPLE.<br>PLACES.<br>POTENTIAL.</div>
+      <div class="corner right">A BRIGHTER,<br>HEALTHIER,<br>MORE CAPABLE YOU.</div>
+    </section>
+
+    <section class="screen" id="signin" aria-labelledby="signin-title" hidden>
+      <button class="back" data-go="wide">← <span>Back</span></button>
+      <div class="card">
+        <p class="eyebrow">GOOD TO SEE YOU AGAIN</p>
+        <h1 id="signin-title" tabindex="-1">Welcome back.</h1>
+        <form id="login-form">
+          <fieldset class="role-switch"><legend>Sign in as</legend>
+            <label><input type="radio" name="login-role" value="Athlete" checked><span>Athlete</span></label>
+            <label><input type="radio" name="login-role" value="Coach"><span>Coach</span></label>
+          </fieldset>
+          <label class="field">User ID or email<input name="user_id" autocomplete="username" maxlength="254" placeholder="Your User ID or email" required></label>
+          <label class="field">Password<span class="password-wrap"><input name="password" type="password" autocomplete="current-password" placeholder="Your password" required><button type="button" class="eye" aria-label="Show password">◉</button></span></label>
+          <button type="button" class="text-link forgot" data-go="reset">Forgot password?</button>
+          <p class="feedback" role="alert" hidden></p>
+          <button class="primary full" type="submit">Enter my studio <span aria-hidden="true">→</span></button>
+        </form>
+        <p class="switch">New to QUTwin? <button class="text-link" data-go="account">Create account</button></p>
+      </div>
+      <p class="destination">Together, at the starting line.</p>
+    </section>
+
+    <section class="screen" id="account" aria-labelledby="account-title" hidden>
+      <button class="back" data-go="wide">← <span>Back</span></button>
+      <div class="card signup-card">
+        <nav class="steps" aria-label="Account creation progress" data-step="0"></nav>
+        <h1 id="account-title" tabindex="-1">Make it yours.</h1>
+        <p class="intro">A little about you. A new chapter for your training.</p>
+        <form id="account-form">
+          <fieldset class="role-switch"><legend>Create an account as</legend>
+            <label><input type="radio" name="role" value="Athlete" checked><span>↗ &nbsp; Athlete</span></label>
+            <label><input type="radio" name="role" value="Coach"><span>♧ &nbsp; Coach</span></label>
+          </fieldset>
+          <label class="field">Full name<input name="name" autocomplete="name" maxlength="120" placeholder="Your full name" required></label>
+          <div class="two-col">
+            <label class="field">User ID<input name="user_id" autocomplete="username" pattern="[A-Za-z0-9_.\-]{3,64}" minlength="3" maxlength="64" placeholder="Choose your User ID" title="3–64 letters, numbers, dots, underscores or hyphens" required></label>
+            <label class="field">Email<input name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required></label>
+          </div>
+          <label class="field">Password<span class="password-wrap"><input name="password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" required><button type="button" class="eye" aria-label="Show password">◉</button></span></label>
+          <label class="field">Confirm password<span class="password-wrap"><input name="confirm" type="password" autocomplete="new-password" minlength="8" placeholder="Enter your password again" required><button type="button" class="eye" aria-label="Show password">◉</button></span></label>
+          <label class="field coach-only" hidden>Coaching specialisation <span class="optional">optional</span><input name="specialisation" maxlength="150" placeholder="Your sport or area of coaching"></label>
+          <label class="checkbox"><input name="terms_accepted" type="checkbox" required><span>I acknowledge the <button type="button" class="text-link" id="open-notice">account and data notice</button>.</span></label>
+          <p class="feedback" role="alert" hidden></p>
+          <button type="submit" class="primary full">Continue <span aria-hidden="true">→</span></button>
+        </form>
+        <p class="switch">Already training with us? <button class="text-link" data-go="signin">Sign in</button></p>
+      </div>
+      <p class="role-caption" id="role-caption">Athlete · Your journey starts here.</p>
+    </section>
+
+    <section class="screen" id="body" aria-labelledby="body-title" hidden>
+      <button class="back" data-go="account">← <span>Back</span></button>
+      <div class="card">
+        <nav class="steps" aria-label="Account creation progress" data-step="1"></nav>
+        <h1 id="body-title" tabindex="-1">Meet your digital twin.</h1>
+        <p class="intro">Help us build a more accurate picture of you.</p>
+        <form id="body-form">
+          <div class="two-col">
+            <label class="field">Date of birth<input name="date_of_birth" type="date" autocomplete="bday" required></label>
+            <label class="field">Gender<select name="gender" required><option value="" disabled selected>Select</option><option>Female</option><option>Male</option><option>Non-binary</option><option>Prefer not to say</option></select></label>
+          </div>
+          <div class="two-col">
+            <label class="field">Height <span class="optional">cm</span><input name="height" type="number" min="100" max="250" step="0.1" inputmode="decimal" placeholder="170" required></label>
+            <label class="field">Weight <span class="optional">kg</span><input name="weight" type="number" min="30" max="250" step="0.1" inputmode="decimal" placeholder="70" required></label>
+          </div>
+          <label class="field">Sport<input name="sport" list="sports" maxlength="100" placeholder="Your main sport" required><datalist id="sports"><option value="Athletics"><option value="Swimming"><option value="Cycling"><option value="Rowing"><option value="Football"><option value="Basketball"><option value="Triathlon"></datalist></label>
+          <label class="field">Event or discipline <span class="optional">optional</span><input name="event_type" maxlength="100" placeholder="e.g. 100 m, freestyle, endurance"></label>
+          <p class="helper">You can update these details in your athlete profile.</p>
+          <p class="feedback" role="alert" hidden></p>
+          <button type="submit" class="primary full">Continue <span aria-hidden="true">→</span></button>
+        </form>
+      </div>
+    </section>
+
+    <section class="screen" id="health" aria-labelledby="health-title" hidden>
+      <button class="back" data-go="body">← <span>Back</span></button>
+      <div class="card">
+        <nav class="steps" aria-label="Account creation progress" data-step="2"></nav>
+        <h1 id="health-title" tabindex="-1">Your training context.</h1>
+        <p class="intro">The details that help put your training in perspective.</p>
+        <form id="health-form">
+          <label class="field">Number of previous injuries<input name="previous_injury" type="number" min="0" max="30" step="1" value="0" inputmode="numeric" required></label>
+          <label class="field">Injury history or relevant context <span class="optional">optional</span><textarea name="injury_history" maxlength="2500" rows="4" placeholder="Share any context you would like included in your profile."></textarea></label>
+          <label class="checkbox"><input name="health_consent" type="checkbox" required><span>I understand that the health details I provide will be stored in my QUTwin profile.</span></label>
+          <p class="helper">Provide only the information you are comfortable sharing with the project.</p>
+          <p class="feedback" role="alert" hidden></p>
+          <button type="submit" class="primary full">Review my details <span aria-hidden="true">→</span></button>
+        </form>
+      </div>
+    </section>
+
+    <section class="screen" id="review" aria-labelledby="review-title" hidden>
+      <button class="back" id="review-back">← <span>Back</span></button>
+      <div class="card">
+        <nav class="steps" aria-label="Account creation progress" data-step="3"></nav>
+        <h1 id="review-title" tabindex="-1">Ready when you are.</h1>
+        <p class="intro">One last look before you start.</p>
+        <div id="review-content"></div>
+        <p class="feedback" role="alert" hidden></p>
+        <button class="primary full" id="save-account">Create my account <span aria-hidden="true">→</span></button>
+        <p class="helper">Your account is created only when you select this button.</p>
+      </div>
+    </section>
+
+    <section class="screen" id="success" aria-labelledby="success-title" hidden>
+      <div class="card success-card">
+        <div class="success-mark" aria-hidden="true">✓</div>
+        <p class="eyebrow">YOUR ACCOUNT IS READY</p>
+        <h1 id="success-title" tabindex="-1">You’re on your way.</h1>
+        <p class="intro">Your details have been saved.<br>Head to the starting line and sign in.</p>
+        <button class="primary full" id="success-signin">Take me to sign in <span aria-hidden="true">→</span></button>
+      </div>
+    </section>
+
+    <section class="screen" id="reset" aria-labelledby="reset-title" hidden>
+      <button class="back" data-go="signin">← <span>Back</span></button>
+      <div class="card">
+        <p class="eyebrow">LET’S GET YOU BACK</p>
+        <h1 id="reset-title" tabindex="-1">Need a hand?</h1>
+        <p class="intro">Password reset email is not yet configured for this QUTwin project. Contact your project administrator for help accessing your account.</p>
+        <button class="primary full" data-go="signin">Back to sign in <span aria-hidden="true">→</span></button>
+      </div>
+    </section>
+  </main>
+  <div class="journey-status" id="journey-status" role="status" aria-live="polite" hidden></div>
+  <div class="loader" id="loader" role="status"><span class="loading-mark">Q</span><p>Preparing your studio<span id="loading-detail">Loading the landscape…</span></p></div>
+  <div class="scene-warning" id="scene-warning" role="status" hidden></div>
+  <dialog id="notice"><button class="notice-close subtle" aria-label="Close notice">×</button><p class="eyebrow">ACCOUNT AND DATA NOTICE</p><h2>Before you begin.</h2><p>QUTwin is an academic athlete performance and wellbeing prototype. Creating an account stores your account details in the project’s configured database. Athlete onboarding also stores the body, sport and health details you choose to provide.</p><p>This screen does not replace the project’s approved consent process or privacy documentation. Contact the QUTwin project team for the applicable data access, retention and deletion arrangements.</p><button class="primary full notice-close">Understood <span aria-hidden="true">→</span></button></dialog>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
