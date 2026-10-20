@@ -1,227 +1,210 @@
+"""Photographic athlete profile, connected to the existing QUTwin repositories."""
+from pathlib import Path
+import base64
+import logging
+import uuid
+
 import streamlit as st
-import pandas as pd
-from io import BytesIO
-from database.twin_repository import get_athlete_twin_history
+import streamlit.components.v1 as components
+
 from database.athlete_repository import get_athlete_profile, update_athlete_profile
+from database.twin_repository import get_athlete_twin_history
+from ui.athlete_profile_model import build_profile_model, validate_changes
+from services.profile_portrait import prepare_portrait, position_portrait, clean_layout, portrait_info, PortraitProcessingError
+
+_FRONTEND = Path(__file__).resolve().parents[2] / "ui" / "athlete_profile_frontend"
+_profile_studio = components.declare_component("qutwin_athlete_profile_photo", path=str(_FRONTEND))
+_log = logging.getLogger(__name__)
+_ROUTES = [("Studio", "Athlete Home"), ("Add activity", "Upload Garmin Data"),
+           ("Predictions", "Predictions & Coach Recommendations"), ("Forecasting", "Forecasting"),
+           ("Journal", "Digital Twin History"), ("Coach", "Requests")]
+
+
+def _go(page):
+    st.session_state.current_page = page
+
+
+def _theme(key):
+    st.session_state[key] = "dawn" if st.session_state.get(key, "dawn") == "dusk" else "dusk"
+
+
+def _sign_out():
+    from authentication.session import logout_user
+    logout_user()
+
+
+def _navigation(model, theme_key):
+    photo_css = ("background-image:url('" + model["avatar"] + "')!important;background-size:cover!important;background-position:center!important;"
+                 if model.get("avatar") else "")
+    st.html('''<style>
+html body [data-testid="stMainBlockContainer"],html body .block-container{max-width:none!important;padding:0!important;}
+html body .st-key-studio_suite_nav,html body header[data-testid="stHeader"],html body [data-testid="stToolbar"],html body [data-testid="stDecoration"]{display:none!important;}
+html body .st-key-athlete_page_content{gap:0!important;}
+iframe[title*="qutwin_athlete_profile_photo"]{display:block;border:0;width:100%;}
+html body .st-key-pp_nav{position:fixed!important;top:0!important;left:0!important;right:0!important;width:100vw!important;z-index:10020!important;
+background:#17352ef5!important;color:#f6f4e9!important;border:0!important;border-bottom:1px solid #b9c5af35!important;
+box-sizing:border-box!important;border-radius:0!important;margin:0!important;padding:7px 2.1vw!important;backdrop-filter:blur(16px);}
+.st-key-pp_nav [data-testid="stHorizontalBlock"]{flex-wrap:nowrap!important;gap:8px!important;align-items:center!important;}
+.st-key-pp_nav [data-testid="stColumn"]{min-width:0!important;}
+.st-key-pp_nav [data-testid="stButton"] button,.st-key-pp_nav [data-testid="stPopoverButton"]{border:0!important;border-radius:7px!important;background:transparent!important;color:#f6f4e9!important;box-shadow:none!important;min-height:40px!important;padding:6px 8px!important;}
+.st-key-pp_nav button p{font:400 15px Arial,sans-serif!important;color:#f6f4e9!important;white-space:nowrap!important;}
+.st-key-pp_nav button:hover{background:#ffffff12!important;transform:none!important;}
+.st-key-pp_nav button:focus-visible{outline:2px solid #f1c397!important;outline-offset:2px!important;}
+.pp-brand{font:500 29px Georgia,serif;white-space:nowrap;letter-spacing:-.5px;color:#f6f4e9;padding:0 2px;}
+.pp-brand span{font-size:24px;margin-right:7px;color:#e6e8d5;}
+.st-key-pp_nav .st-key-pp_theme [data-testid="stButton"] button{border:1px solid #c6d0bd77!important;border-radius:24px!important;}
+.st-key-pp_theme button p{font-size:13px!important;}
+.st-key-pp_account [data-testid="stPopoverButton"]{border:1px solid #c6d0bd99!important;border-radius:50%!important;width:39px!important;height:39px!important;min-height:39px!important;padding:0!important;PHOTO_CSS}
+.st-key-pp_account [data-testid="stPopoverButton"]>svg{display:none!important;}
+.st-key-pp_account [data-testid="stPopoverButton"] p{AVATAR_TEXT}
+.st-key-pp_menu{display:none!important;}
+html body .st-key-pp_privacy{max-width:1440px!important;margin:0 auto!important;padding:16px 4vw 32px!important;}
+html body .st-key-pp_privacy hr{display:none!important;}
+@media(max-width:1050px){
+ .st-key-pp_nav [data-testid="stColumn"]:has([class*="st-key-pp_link_"]){display:none!important;}
+ .st-key-pp_nav [data-testid="stColumn"]{flex:0 0 auto!important;width:auto!important;}
+ .st-key-pp_nav [data-testid="stColumn"]:has(.pp-brand){flex:1 1 auto!important;}
+ .st-key-pp_menu{display:block!important;}
+ .st-key-pp_nav{padding:7px 16px!important;}
+ .st-key-pp_nav [data-testid="stHorizontalBlock"]{gap:10px!important;}
+ .pp-brand{font-size:24px;}
+ .st-key-pp_theme{min-width:76px!important;}
+ .st-key-pp_account{min-width:39px!important;}
+ .st-key-pp_menu{min-width:36px!important;}
+}
+</style>'''.replace("PHOTO_CSS", photo_css).replace("AVATAR_TEXT", "opacity:0!important;" if photo_css else "font-size:12px!important;"))
+    with st.container(key="pp_nav"):
+        cols = st.columns([1.9, .85, 1.25, 1.2, 1.15, .85, .75, 1.05, .45, .45], gap="small", vertical_alignment="center")
+        cols[0].html('<div class="pp-brand"><span>◇</span>QUTwin</div>')
+        for index, (label, route) in enumerate(_ROUTES, 1):
+            with cols[index].container(key="pp_link_" + str(index)):
+                st.button(label, key="pp_go_" + str(index), use_container_width=True, on_click=_go, args=(route,))
+        with cols[7].container(key="pp_theme"):
+            st.button("☾ Dusk" if model["theme"] == "dusk" else "☀ Dawn", key="pp_theme_switch", use_container_width=True,
+                      help="Switch the shared studio theme", on_click=_theme, args=(theme_key,))
+        with cols[8].container(key="pp_account"):
+            with st.popover(model["initials"], help="Your account", use_container_width=True):
+                st.button("My profile", key="pp_account_profile", on_click=_go, args=("Profile",), use_container_width=True)
+                st.button("Notifications", key="pp_account_notifications", on_click=_go, args=("Notifications",), use_container_width=True)
+                st.button("Settings", key="pp_account_settings", on_click=_go, args=("Settings",), use_container_width=True)
+                st.button("Sign out", key="pp_sign_out", on_click=_sign_out, use_container_width=True)
+        with cols[9].container(key="pp_menu"):
+            with st.popover("☰", help="Open navigation", use_container_width=True):
+                for index, (label, route) in enumerate(_ROUTES):
+                    st.button(label, key="pp_mobile_" + str(index), on_click=_go, args=(route,), use_container_width=True)
+
 
 def athlete_profile():
-    """Editable athlete profile using the existing repository fields only."""
-    import base64
-    import html
-    import math
-    from PIL import Image, UnidentifiedImageError
-
+    if not st.session_state.get("logged_in") or st.session_state.get("role") != "Athlete" or not st.session_state.get("user_id"):
+        st.error("Sign in as an athlete to open your profile.")
+        return
     athlete_id = str(st.session_state.user_id)
-    profile = get_athlete_profile(athlete_id)
+    try:
+        profile = get_athlete_profile(athlete_id)
+    except Exception:
+        _log.exception("Athlete profile load failed")
+        st.error("Your profile could not be loaded. Refresh to try again.")
+        return
     if profile is None:
         st.error("Athlete profile not found.")
         return
-
-    def escape(value):
-        return html.escape(str(value))
-
-    def row(label, value):
-        display = "Not provided" if value is None or str(value).strip() == "" else value
-        st.html(f'<div class="qp-row"><span>{escape(label)}</span><strong>{escape(display)}</strong></div>')
-
-    def numeric(value):
-        try:
-            value = float(value)
-            return value if math.isfinite(value) and value > 0 else None
-        except (ValueError, TypeError):
-            return None
-
-    def photo_uri(data):
-        if not data:
-            return None
-        with Image.open(BytesIO(bytes(data))) as image:
-            if image.format not in ("PNG", "JPEG"):
-                raise ValueError("Please choose a PNG or JPEG image.")
-            mime = "image/png" if image.format == "PNG" else "image/jpeg"
-            image.verify()
-        return f"data:{mime};base64," + base64.b64encode(bytes(data)).decode("ascii")
-
-    revision = st.session_state.get(f"qp_revision_{athlete_id}", 0)
-    prefix = f"qp_{athlete_id}_{revision}_"
-    values = {
-        "name": profile.get("name") or "",
-        "email": profile.get("email") or "",
-        "phone": profile.get("contact_number") or "",
-        "height": numeric(profile.get("height")),
-        "weight": numeric(profile.get("weight")),
-        "injury": profile.get("injury_history") or "",
-    }
-    for key, value in values.items():
-        st.session_state[prefix + key] = st.session_state.get(prefix + key, value)
-
-    if st.session_state.pop(f"qp_saved_{athlete_id}", False):
-        st.success("Profile updated successfully.")
-
-    # Data history is informative; an unavailable history must not block profile editing.
     try:
         history = get_athlete_twin_history(athlete_id)
         history_available = True
     except Exception:
-        history = None
-        history_available = False
-    has_history = history is not None and not history.empty
-    latest_date = None
-    if has_history and "timestamp" in history.columns:
-        dates = pd.to_datetime(history["timestamp"], errors="coerce", utc=True).dropna()
-        if not dates.empty:
-            latest_date = dates.max().strftime("%d %b %Y, %H:%M UTC")
-
-    st.html('''<style>
-.st-key-qp_layout {color:#e8f4ff;}
-.st-key-qp_identity, .st-key-qp_personal, .st-key-qp_athlete,
-.st-key-qp_health, .st-key-qp_data {
- background:linear-gradient(145deg,#071e36,#031225) !important;
- border:1px solid #28465d !important; border-radius:14px !important;
- padding:20px !important; box-shadow:none !important;
-}
-.st-key-qp_identity {border-color:#24cbed !important; text-align:center;}
-.qp-avatar {width:160px;height:160px;border-radius:50%;object-fit:cover;
- border:3px solid #22c7ed;display:block;margin:0 auto 14px;}
-.qp-initials {display:flex;align-items:center;justify-content:center;
- background:#0b425b;color:#9eefff;font-size:48px;font-weight:700;}
-.qp-name {font-size:28px;font-weight:750;color:#f3f8ff;overflow-wrap:anywhere;}
-.qp-role,.qp-welcome {color:#22d3ee;}
-.qp-welcome {font-size:16px;margin:0 0 4px;}
-.qp-title {font-size:32px;font-weight:800;color:#f3f8ff;margin:0 0 18px;}
-.qp-card-title {font-size:18px;font-weight:700;color:#e8f4ff;margin:0;}
-.qp-card-title span {color:#22d3ee;margin-right:8px;}
-.qp-row {display:flex;justify-content:space-between;gap:16px;
- border-top:1px solid #1c3a52;padding:11px 0;font-size:14px;}
-.qp-row span {color:#a2b8ce;flex:1;}
-.qp-row strong {font-weight:500;color:#eef6ff;flex:1.25;overflow-wrap:anywhere;white-space:pre-wrap;}
-.qp-badge {border:1px solid #166878;background:#062b35;color:#67e8f9;
- padding:7px 12px;border-radius:10px;display:inline-block;font-size:13px;margin:12px 0;}
-.st-key-qp_layout button[kind="primary"] {background:#10bce8 !important;color:#031324 !important;}
-.st-key-qp_layout button:focus-visible {outline:2px solid #67e8f9;outline-offset:2px;}
-@media(max-width:760px){.qp-title{font-size:27px;}.qp-avatar{width:125px;height:125px;}}
-</style>''')
-    st.html(f'<div class="qp-welcome">Welcome, {escape(profile.get("name") or athlete_id)}</div><div class="qp-title">Athlete Profile</div>')
-
-    existing_photo = profile.get("profile_photo")
-    existing_photo = bytes(existing_photo) if existing_photo else None
-    uploaded_photo = None
-    new_photo = None
-    photo_error = None
-
-    with st.container(key="qp_layout"):
-        identity, middle, right = st.columns([0.85, 1.2, 1.2], gap="medium")
-        with identity:
-            with st.container(key="qp_identity"):
+        history, history_available = None, False
+    theme_key = "studio_theme_" + athlete_id
+    notice_key = "profile_studio_notice_" + athlete_id
+    seen_key = "profile_studio_event_" + athlete_id
+    preview_key = "profile_portrait_preview_" + athlete_id
+    ready_photo = None
+    photo_warning = None
+    raw_photo = profile.get("profile_photo")
+    if raw_photo:
+        try:
+            ready_photo = prepare_portrait(bytes(raw_photo))
+        except PortraitProcessingError as exc:
+            _log.exception("Saved portrait processing failed")
+            photo_warning = str(exc)
+        except Exception:
+            _log.exception("Saved portrait could not be opened")
+            photo_warning = "Your saved photo could not be prepared. Open Edit profile to upload another photo. The app terminal has the error."
+    displayed = dict(profile)
+    if ready_photo is not None:
+        displayed["profile_photo"] = ready_photo
+    model = build_profile_model(displayed, athlete_id, history, history_available,
+                                st.session_state.get(theme_key, "dawn"), st.session_state.get(notice_key))
+    model["photo_warning"] = photo_warning
+    preview = st.session_state.get(preview_key)
+    if preview:
+        model["photo_preview"] = {"nonce": preview["nonce"], "token": preview["token"],
+            "uri": "data:image/png;base64," + base64.b64encode(preview["data"]).decode("ascii"),
+            "layout": portrait_info(preview["data"])["layout"]}
+    _navigation(model, theme_key)
+    event = _profile_studio(model=model, key="athlete_profile_photo_" + athlete_id, default=None)
+    if isinstance(event, dict):
+        nonce = event.get("nonce")
+        fresh = isinstance(nonce, str) and 0 < len(nonce) <= 100 and nonce != st.session_state.get(seen_key)
+        if fresh:
+            st.session_state[seen_key] = nonce
+            action = event.get("action")
+            if action == "theme" and event.get("theme") in ("dawn", "dusk"):
+                st.session_state[theme_key] = event["theme"]
+                st.rerun()
+            elif action == "upload":
+                st.session_state.current_page = "Upload Garmin Data"
+                st.rerun()
+            elif action == "prepare_photo":
                 try:
-                    uri = photo_uri(existing_photo)
-                except (ValueError, OSError, UnidentifiedImageError):
-                    uri = None
-                if uri:
-                    st.html(f'<img class="qp-avatar" src="{uri}" alt="Your profile photo">')
-                else:
-                    initials = "".join(p[0] for p in str(profile.get("name") or athlete_id).split())[:2].upper()
-                    st.html(f'<div class="qp-avatar qp-initials">{escape(initials)}</div>')
-                st.html(f'<div class="qp-name">{escape(profile.get("name") or athlete_id)}</div><div class="qp-role">Athlete</div>')
-                fields = [profile.get(k) for k in ("name", "age", "height", "weight", "email", "contact_number")]
-                completed = sum(v is not None and str(v).strip() != "" for v in fields) + bool(uri)
-                completion = round(completed / 7 * 100)
-                st.progress(completion, text=f"Profile completion · {completion}%")
-                st.caption("Based on personal details and profile photo.")
-                status = "History unavailable" if not history_available else ("Activity data available" if has_history else "No activity data yet")
-                st.html(f'<div class="qp-badge">{escape(status)}</div>')
-                if st.toggle("Change photo", key=prefix + "edit_photo"):
-                    uploaded_photo = st.file_uploader("Choose a PNG or JPEG (up to 5 MB)", type=["png", "jpg", "jpeg"], key=prefix + "upload")
-                    if uploaded_photo is not None:
-                        try:
-                            new_photo = uploaded_photo.getvalue()
-                            if len(new_photo) > 5 * 1024 * 1024:
-                                raise ValueError("Please choose a photo smaller than 5 MB.")
-                            new_uri = photo_uri(new_photo)
-                            if not new_uri:
-                                raise ValueError("The image file is empty.")
-                            st.html(f'<img class="qp-avatar" src="{new_uri}" alt="New photo preview">')
-                        except (ValueError, OSError, UnidentifiedImageError) as exc:
-                            photo_error = str(exc)
-                            st.error("Unable to use this photo. " + photo_error)
-        with middle:
-            with st.container(key="qp_personal"):
-                st.html('<div class="qp-card-title"><span>◉</span>Personal Information</div>')
-                edit = st.toggle("Edit personal information", key=prefix + "edit_personal")
-                row("User ID", athlete_id)
-                if edit:
-                    st.text_input("Full name", key=prefix + "name")
-                    st.text_input("Email", key=prefix + "email")
-                    st.text_input("Contact number", key=prefix + "phone")
-                else:
-                    row("Full name", st.session_state[prefix + "name"])
-                    row("Email", st.session_state[prefix + "email"])
-                    row("Contact number", st.session_state[prefix + "phone"])
-            with st.container(key="qp_health"):
-                st.html('<div class="qp-card-title"><span>♡</span>Health & Injuries</div>')
-                previous = profile.get("previous_injury")
-                row("Previous injury recorded", "Not provided" if previous is None else ("Yes" if previous else "No"))
-                if st.toggle("Edit injury history", key=prefix + "edit_health"):
-                    st.text_area("Injury history / notes", key=prefix + "injury", height=130)
-                else:
-                    row("Injury history / notes", st.session_state[prefix + "injury"])
-        with right:
-            with st.container(key="qp_athlete"):
-                st.html('<div class="qp-card-title"><span>◇</span>Athlete Information</div>')
-                row("Age", profile.get("age"))
-                if st.toggle("Edit athlete information", key=prefix + "edit_athlete"):
-                    st.number_input("Height (cm)", min_value=0.0, max_value=300.0, value=None, step=0.5, key=prefix + "height")
-                    st.number_input("Weight (kg)", min_value=0.0, max_value=500.0, value=None, step=0.5, key=prefix + "weight")
-                else:
-                    row("Height", f'{st.session_state[prefix + "height"]:g} cm' if st.session_state[prefix + "height"] is not None else None)
-                    row("Weight", f'{st.session_state[prefix + "weight"]:g} kg' if st.session_state[prefix + "weight"] is not None else None)
-                st.caption("Age is shown from your registration details.")
-            with st.container(key="qp_data"):
-                st.html('<div class="qp-card-title"><span>↗</span>Data source</div>')
-                row("Data access", "Uploaded activity files")
-                row("Available twin records", len(history) if has_history else (0 if history_available else "Unavailable"))
-                row("Latest activity record", latest_date)
-                row("Live Garmin sync", "Not configured")
-                st.caption("Activity history does not indicate a live device connection.")
-                if st.button("Upload activity data", key=prefix + "go_upload", use_container_width=True):
-                    st.session_state.current_page = "Upload Garmin Data"
-                    st.rerun()
-        _, save_col, _ = st.columns([1, 1, 1])
-        with save_col:
-            save = st.button("Save Changes", key=prefix + "save", type="primary", use_container_width=True)
-        if save:
-            name = st.session_state[prefix + "name"].strip()
-            email = st.session_state[prefix + "email"].strip()
-            height = st.session_state[prefix + "height"]
-            weight = st.session_state[prefix + "weight"]
-            if not name:
-                st.error("Please enter your full name.")
-            elif email and ("@" not in email or not all(email.split("@", 1))):
-                st.error("Please enter a valid email address.")
-            elif (height is not None and height <= 0) or (weight is not None and weight <= 0):
-                st.error("Height and weight must be greater than zero, or left empty.")
-            elif photo_error:
-                st.error("Please choose a valid photo before saving.")
-            else:
+                    if event.get("source") == "saved":
+                        if not raw_photo:
+                            raise ValueError("Choose a photo first.")
+                        uploaded = bytes(raw_photo)
+                    else:
+                        fields = dict(model["fields"], photo=event.get("photo"))
+                        uploaded = validate_changes(fields)["profile_photo"]
+                        if uploaded is None:
+                            raise ValueError("Choose a photo first.")
+                    data = prepare_portrait(uploaded)
+                    st.session_state[preview_key] = {"data": data, "nonce": nonce, "token": uuid.uuid4().hex}
+                    st.session_state.pop(notice_key, None)
+                except Exception as exc:
+                    _log.exception("Portrait preview failed")
+                    message = str(exc) if isinstance(exc, (ValueError, RuntimeError)) else "Your photo could not be processed. Choose another image or a transparent PNG."
+                    st.session_state[notice_key] = dict(kind="error", nonce=nonce, message=message)
+                st.rerun()
+            elif action == "save":
                 try:
-                    update_athlete_profile(
-                        athlete_id=athlete_id, name=name, email=email,
-                        contact_number=st.session_state[prefix + "phone"].strip(),
-                        height=height, weight=weight,
-                        injury_history=st.session_state[prefix + "injury"].strip(),
-                        profile_photo=new_photo,
-                    )
-                except Exception:
-                    st.error("Your profile could not be saved. Your edits are still here; please try again.")
+                    payload = event.get("changes")
+                    changes = validate_changes(payload)
+                    layout = clean_layout(payload.get("photo_layout"))
+                    token = payload.get("photo_token")
+                    if token is not None:
+                        preview = st.session_state.get(preview_key)
+                        if not preview or token != preview["token"]:
+                            raise ValueError("Choose your photo again before saving.")
+                        changes["profile_photo"] = position_portrait(preview["data"], layout)
+                    elif changes["profile_photo"] is not None:
+                        changes["profile_photo"] = position_portrait(changes["profile_photo"], layout)
+                    elif ready_photo is not None:
+                        changes["profile_photo"] = position_portrait(ready_photo, layout)
+                except Exception as exc:
+                    _log.exception("Profile validation or portrait placement failed")
+                    message = str(exc) if isinstance(exc, (ValueError, RuntimeError)) else "Your photo could not be prepared for saving. Your draft is still here. The app terminal has the error."
+                    st.session_state[notice_key] = dict(kind="error", message=message, nonce=nonce)
                 else:
-                    if new_photo is not None:
-                        st.session_state.profile_photo = new_photo
-                    # Clear drafts only after a successful database write.
-                    for key in list(st.session_state):
-                        if key.startswith(prefix):
-                            del st.session_state[key]
-                    st.session_state[f"qp_revision_{athlete_id}"] = revision + 1
-                    st.session_state[f"qp_saved_{athlete_id}"] = True
-                    st.rerun()
-
+                    try:
+                        update_athlete_profile(athlete_id=athlete_id, **changes)
+                    except Exception:
+                        _log.exception("Athlete profile save failed")
+                        st.session_state[notice_key] = dict(kind="error", nonce=nonce,
+                            message="Your profile could not be saved. Your edits are still here; please try again.")
+                    else:
+                        if changes["profile_photo"] is not None:
+                            st.session_state.profile_photo = changes["profile_photo"]
+                        st.session_state.pop(preview_key, None)
+                        st.session_state[notice_key] = dict(kind="success", nonce=nonce, message="Your profile has been saved.")
+                st.rerun()
     from views.athlete.privacy_controls import render_delete_account
-    render_delete_account()
+    with st.container(key="pp_privacy"):
+        render_delete_account()
