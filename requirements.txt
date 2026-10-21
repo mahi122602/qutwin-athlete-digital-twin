@@ -18,3 +18,5 @@ xlrd
 catboost==1.2.8
 
 -r requirements_profile.txt
+
+-r requirements_prediction.txt

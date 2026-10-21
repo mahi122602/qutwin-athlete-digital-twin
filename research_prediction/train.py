@@ -1,11 +1,13 @@
 """Offline model selection. No training or downloading runs during page navigation."""
 import hashlib
 import json
+import platform
 from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
 import sklearn
+import scipy
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -19,7 +21,11 @@ from research_prediction.features import NUMERIC, model_frame, canonical_event
 
 ROOT=Path(__file__).resolve().parents[1]
 TIERS={'complete':NUMERIC, 'load_recovery':['training_load','sleep_hours','recovery_time','hydration_score'],
-       'recovery':['sleep_hours','recovery_time','hydration_score'], 'load_only':['training_load']}
+       'recovery':['sleep_hours','recovery_time','hydration_score'],
+       'load_sleep':['training_load','sleep_hours'],
+       'load_rest':['training_load','recovery_time'],
+       'sleep_rest':['sleep_hours','recovery_time'], 'load_only':['training_load']}
+NEW_TIERS={'load_sleep','load_rest','sleep_rest'}
 
 def make_model(name, target, columns):
     prepare=ColumnTransformer([
@@ -57,6 +63,15 @@ def main():
     dev,test=next(GroupShuffleSplit(n_splits=1,test_size=.2,random_state=42).split(X,y,groups))
     if groups.iloc[dev].nunique()<5:raise ValueError('At least five development athletes are needed.')
     fitted={};reports={}
+    # A partial model must improve on an event-only model in development CV.
+    # The athlete holdout is reported once; it never controls tier inclusion.
+    event_cv=[]
+    for train,val in GroupKFold(3).split(X.iloc[dev],y[dev],groups.iloc[dev]):
+        tr,va=dev[train],dev[val]
+        means=pd.Series(y[tr]).groupby(X.iloc[tr].event.to_numpy()).mean()
+        prediction=X.iloc[va].event.map(means).fillna(float(y[tr].mean()))
+        event_cv.append(mean_absolute_error(y[va],prediction))
+    event_baseline_cv=float(np.mean(event_cv))
     dates=pd.to_datetime(data.get('date'),dayfirst=True,errors='coerce')
     for tier,columns in TIERS.items():
         scores={};chosen={}
@@ -75,6 +90,9 @@ def main():
         report={'features':columns,'selected_models':chosen,'development_group_cv':scores,
                 'metrics':metrics(y[test],fp,risk[test],rp,np.repeat(y[dev].mean(),len(test))),
                 'ranges':{c:[float(X.iloc[dev][c].min()),float(X.iloc[dev][c].max())] for c in columns}}
+        report['event_only_development_mae']=event_baseline_cv
+        report['enabled']=tier not in NEW_TIERS or scores['fatigue'][chosen['fatigue']] < .99*event_baseline_cv
+        report['selection_note']='New partial tiers require at least 1% lower grouped development MAE than the event-only baseline; holdout results do not select tiers.'
         # Separate temporal diagnostic; three dates are not a robust forecasting benchmark.
         unique=sorted(dates.dropna().unique())
         if len(unique)>=3:
@@ -84,7 +102,9 @@ def main():
             report['temporal_diagnostic']=metrics(y[te],fm.predict(X.iloc[te]),risk[te],np.asarray(rm.predict(X.iloc[te])).reshape(-1),np.repeat(y[tr].mean(),len(te)))
         fitted[tier]=pair;reports[tier]=report
         print(tier,chosen,report['metrics'],flush=True)
-    report={'version':'adaptive-v2','sklearn_version':sklearn.__version__,'catboost_version':'1.2.8',
+    report={'version':'adaptive-v3','sklearn_version':sklearn.__version__,'catboost_version':'1.2.8',
+      'environment':{'python':platform.python_version(),'numpy':np.__version__,'pandas':pd.__version__,
+                     'scipy':scipy.__version__,'scikit-learn':sklearn.__version__,'joblib':joblib.__version__,'catboost':'1.2.8'},
       'training_data_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'rows':len(data),'athletes':int(groups.nunique()),
       'development_athletes':int(groups.iloc[dev].nunique()),'held_out_athletes':int(groups.iloc[test].nunique()),
       'supported_events':sorted(X.event.unique()),'unique_training_dates':int(dates.nunique()),

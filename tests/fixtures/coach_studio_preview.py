@@ -9,6 +9,8 @@ from views.coach import studio as s
 from database import coach_identity as identity
 from database import connection_request_repository as cr
 from ui import coach_dashboard as home
+from ui import activity_explorer as explorer
+from services.activity_explorer import build_explorer_data
 now=datetime.now(timezone.utc)
 st.session_state.setdefault('logged_in',True)
 st.session_state.setdefault('role','Coach')
@@ -28,6 +30,7 @@ with ExitStack() as stack:
     stack.enter_context(patch.object(home,'coach_queue',return_value=[review]))
     stack.enter_context(patch.object(home,'get_unread_notification_count',return_value=1))
     stack.enter_context(patch.object(home,'require_coach_connection',return_value=None))
+    stack.enter_context(patch.object(explorer,'load_explorer_data',return_value=build_explorer_data([],legacy=history)))
     for name in ['create_team','change_member','disconnect','save_profile','delete_profile']:stack.enter_context(patch.object(s.db,name,return_value=None))
     stack.enter_context(patch.object(s,'review_recommendation',return_value=None))
     s.render()

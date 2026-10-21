@@ -11,7 +11,8 @@ def canonical_event(value):
 def model_frame(frame):
     out=frame.reindex(columns=NUMERIC).apply(pd.to_numeric,errors='coerce')
     if 'hydration_level' in frame:
-        out['hydration_score']=frame.hydration_level.astype(str).str.lower().map({'low':.4,'medium':.7,'high':1.})
+        mapped=frame.hydration_level.astype(str).str.lower().map({'low':.4,'medium':.7,'high':1.})
+        out['hydration_score']=mapped.combine_first(out['hydration_score'])
     out['event']=frame.get('event_type',pd.Series('Unknown',index=frame.index)).map(canonical_event)
     return out
 

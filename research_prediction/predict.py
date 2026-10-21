@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 from research_prediction.features import NUMERIC, model_frame, derive_features, canonical_event
 
+ANALYSIS_VERSION = 'prediction-2026-10-21'
+
 @lru_cache(maxsize=1)
 def bundle():
     path=Path(__file__).with_name('adaptive_models.joblib')
@@ -14,17 +16,31 @@ def bundle():
 
 def analyse(record,events,history=()):
     analysis=derive_features(record,history,events);data=dict(record)
-    if analysis['features'].get('training_load') is not None:data['training_load']=analysis['features']['training_load']
+    if analysis['features'].get('training_load') is not None:
+        data['training_load']=analysis['features']['training_load']
+        data['training_load_origin']=analysis['provenance']['training_load']
     models=bundle();report=models['report'];X=model_frame(pd.DataFrame([data]))
     missing=[k for k in NUMERIC if pd.isna(X.iloc[0][k])];observed=[k for k in NUMERIC if k not in missing]
-    out={'analysis':analysis,'model_version':report['version'], 'prediction_basis':'Experimental dataset estimate; external wearable accuracy is unverified',
+    out={'analysis':analysis,'model_version':report['version'], 'analysis_version':ANALYSIS_VERSION,
+         'prediction_basis':'Experimental dataset estimate; external wearable accuracy is unverified',
          'model_limitations':report['limitations'],'activity_date_unknown':pd.isna(pd.to_datetime(record.get('timestamp'),utc=True,errors='coerce')),
          'missing_inputs':missing,'observed_model_inputs':observed,'imputed_model_inputs':{}}
+    if analysis['features'].get('training_load') is not None:
+        out.update(training_load=data['training_load'],training_load_origin=data['training_load_origin'])
     outside=[k for k in observed if not report['ranges'][k][0]<=float(X.iloc[0][k])<=report['ranges'][k][1]]
     out['outside_training_range']=outside
-    selected=None
+    selected=None; eligibility=[]
     for name,spec in report['tiers'].items():
-        if all(k in observed and k not in outside for k in spec['features']):selected=name;break
+        ranges=spec.get('ranges',report['ranges'])
+        unavailable=[k for k in spec['features'] if k not in observed]
+        beyond=[{'field':k,'value':float(X.iloc[0][k]),'minimum':ranges[k][0],'maximum':ranges[k][1]}
+                for k in spec['features'] if k in observed and not ranges[k][0]<=float(X.iloc[0][k])<=ranges[k][1]]
+        enabled=spec.get('enabled',True)
+        eligible=enabled and not unavailable and not beyond
+        eligibility.append({'tier':name,'features':spec['features'],'missing':unavailable,
+                            'outside_range':beyond,'enabled':enabled,'eligible':eligible})
+        if eligible and selected is None:selected=name
+    out['model_eligibility']=eligibility
     if not selected:
         return dict(out,prediction_status='analysis_only',analysis_message='Measurements saved and analysed. None of the evaluated model input sets covers these measurements.',
                     required_input_sets={k:v['features'] for k,v in report['tiers'].items()})
@@ -71,6 +87,7 @@ def analyse(record,events,history=()):
         fatigue_index=fatigue/100,readiness_index=readiness/100,athlete_state=state,digital_twin_state=state,
         event_scenarios=scenarios,primary_event=primary,event_supported=is_supported,prediction_status='research_estimate',
         composite_basis='Engineered indices from fatigue estimate and available recovery/environment measurements; missing components omitted and weights renormalised. Not validated readiness or clearance.',
+        event_basis='Recorded event is represented in training.' if is_supported else 'Average of 100 m and 800 m research references; not a model validated for the recorded sport or selected unsupported events.',
         uncertainty_note='Held-out dataset errors, not an individual confidence interval. External export accuracy is unknown.',
         risk_validation_warning=f"Exploratory injury category: {metrics['risk_balanced_accuracy']:.1%} balanced accuracy on held-out research athletes; not a probability of future injury.")
     return out

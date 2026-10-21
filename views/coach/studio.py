@@ -149,17 +149,8 @@ def team_detail(roster):
             if st.button('Remove from this team'):db.change_member(tid,aid,False);st.rerun()
 
 def chart_history(aid):
-    import plotly.express as px
-    history=get_athlete_twin_history(aid)
-    if history.empty:st.info('No activity data yet.');return
-    keys=[k for k in ('fatigue_score','readiness_score','heart_rate','training_load','sleep_hours') if k in history and pd.to_numeric(history[k],errors='coerce').notna().any()]
-    if not keys:st.info('No usable numeric measurements to plot.');return
-    metric=st.selectbox('Measurement',keys,format_func=lambda s:s.replace('_',' ').title())
-    d=history.dropna(subset=['timestamp']).sort_values('timestamp')
-    st.caption(f'{len(history)-len(d)} undated records are excluded from time trends.')
-    if d.empty:st.info('Activity dates are missing. Records remain available in History.');return
-    fig=px.line(d,x='timestamp',y=metric,markers=True,labels={'timestamp':'Activity date',metric:metric.replace('_',' ').title()})
-    st.plotly_chart(style_chart(fig),use_container_width=True)
+    from ui.activity_explorer import render_activity_explorer
+    render_activity_explorer(str(aid),key_prefix='ax_coach_'+str(aid)+'_')
 
 def athlete_detail(roster):
     aid=selected(roster)
@@ -194,6 +185,8 @@ def history_page(aid):
     choice=st.selectbox('Open saved assessment',[u['id'] for u in uploads],format_func=lambda id:next(u['filename'] for u in uploads if u['id']==id))
     u=next(u for u in uploads if u['id']==choice);score_ribbon(u['snapshot'])
     with st.expander('AI draft and coach feedback'):
+        if not u.get('recommendation_is_current',True):
+            st.info('The draft and decisions below refer to an earlier assessment. The current numeric analysis is shown above.')
         st.markdown(u.get('ai_text') or 'No draft generated.')
         for r in revs:
             if r['upload_id']==choice:st.markdown(f"**{r['status']}** · {r.get('final_text') or r.get('comment') or ''}")
@@ -234,6 +227,8 @@ def reviews(aid=None):
     r=next(r for r in queue if r['id']==pick);require_coach_connection(st.session_state.user_id,r['athlete_id'])
     st.caption(f"Source upload #{r['upload_id']} · {r['uploaded_at']} · Model: {r.get('ai_model') or 'Unknown'}")
     snap=r['snapshot'] or {}
+    if not r.get('assessment_is_current',True):
+        st.info('The athlete has updated their measurements. This review retains the assessment originally used for this draft; it does not approve the newer analysis.')
     st.caption('AI draft · Coach approval required. Injury categories are experimental, not validated probabilities.')
     with st.expander('Assessment context'):
         score_ribbon(snap)

@@ -249,7 +249,7 @@ def normalise_table(raw, options=None):
  if 'training_load' not in out:out['training_load']=float('nan')
  out['training_load_origin']='Uploaded load; scale not verified against training data'
  if {'heart_rate','duration_minutes'}.issubset(out):
-  load=(out.heart_rate*out.duration_minutes/100).round(2);mask=out.training_load.isna() & load.notna()
+  load=(pd.to_numeric(out.heart_rate,errors='coerce')*pd.to_numeric(out.duration_minutes,errors='coerce')/100).round(2);mask=out.training_load.isna() & load.notna()
   if mask.any():
    out.loc[mask,'training_load']=load[mask]
    out.loc[mask,'training_load_origin']='QUTwin estimate: average HR × minutes / 100'

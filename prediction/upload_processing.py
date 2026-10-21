@@ -43,11 +43,19 @@ def process_upload(athlete_id,entry,selected_events):
     if 'record_kind' in frame and frame.record_kind.eq('activity').any():eligible=frame[frame.record_kind.eq('activity')]
     order=eligible.assign(_date=eligible.timestamp).sort_values('_date',na_position='first',kind='stable')
     latest_position=frame.index.get_loc(order.index[-1])
-    record=records[latest_position]
+    from prediction.assessment_inputs import with_context
+    record,context=with_context(records[latest_position],entry.get('assessment_inputs'))
     snapshot=dict(record, **analyse(record, selected_events, history+records))
+    snapshot['assessment_inputs']=context
+    snapshot['assessment_input_provenance']={key:'Athlete confirmed for this activity; source export retained' for key in context}
+    for key in context:
+        if key in snapshot['analysis']['provenance']:
+            snapshot['analysis']['provenance'][key]='Athlete confirmed for this activity'
     # Weather is an explicitly estimated context, not a sensor measurement or a
     # drop-in replacement for the model's undocumented environmental inputs.
     snapshot['weather_context']=weather_context(record,entry.get('location'),entry.get('environment','Unknown'))
+    if entry.get('saved_weather_context') and 'timestamp' not in context:
+        snapshot['weather_context']=entry['saved_weather_context']
     snapshot['planned_event_count']=len(selected_events)
     snapshot['event_plan_note']='Upcoming event choices, not activities performed; count alone is not an injury-risk multiplier.'
 
@@ -62,6 +70,10 @@ def process_upload(athlete_id,entry,selected_events):
     # into physiological sensor columns or the existing legacy-state tables.
     status='research_estimate' if count else 'observations_only'
     saver=save_upload
+    if entry.get('assessment_update'):
+        from database.prediction_assessments import save_assessment
+        update=entry['assessment_update']
+        return save_assessment(athlete_id,update['id'],update['expected_token'],snapshot)
     if entry.get('refresh_analysis'):
         from database.workflow_repository import refresh_unreviewed_analysis
         saver=refresh_unreviewed_analysis
@@ -77,3 +89,26 @@ def recalculate_saved(athlete_id,upload):
     return process_upload(athlete_id,{'df':pd.DataFrame(records),'assignments':upload['assignments'],
         'name':upload['filename'],'digest':upload['content_hash'],'detection':{'source':upload['source']},
         'refresh_analysis':True},upload['events'])
+
+
+def update_saved_assessment(athlete_id,upload,inputs=None):
+    """Re-fetch owned source records; append a revision to this upload, not a new file."""
+    from prediction.assessment_versions import assessment_token
+    from database.prediction_assessments import require_athlete
+    require_athlete(athlete_id)
+    current=next((u for u in list_uploads(athlete_id) if str(u['id'])==str(upload['id'])),None)
+    if current is None:
+        raise PermissionError('This saved upload does not belong to this athlete.')
+    expected=assessment_token(upload.get('snapshot'))
+    if expected!=assessment_token(current.get('snapshot')):
+        raise ValueError('This assessment changed in another session. Reload the page and try again.')
+    records=current.get('records') or []
+    if not records:
+        raise ValueError('No source observations were saved for this upload. Upload the original export again.')
+    prior=current.get('snapshot') or {}
+    context=prior.get('assessment_inputs',{}) if inputs is None else inputs
+    return process_upload(athlete_id,dict(df=pd.DataFrame(records),assignments=current.get('assignments') or [],
+        planned_events_only=True,name=current['filename'],digest=current['content_hash'],detection={'source':current['source']},
+        assessment_inputs=context,saved_weather_context=prior.get('weather_context'),
+        raw={'reports':prior.get('import_reports',{})},
+        assessment_update={'id':current['id'],'expected_token':expected}),current['events'])

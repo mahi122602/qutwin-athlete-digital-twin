@@ -3,6 +3,7 @@ from database.coach_schema import get_connection
 from database.coach_identity import actor, _save_details
 from authentication.password_utils import check_password
 from utils.performance import invalidate_reads
+from prediction.assessment_versions import current_assessment
 
 def rows(cur):return [dict(zip([c[0] for c in cur.description],r)) for r in cur.fetchall()]
 def query(statement,params=()):
@@ -16,11 +17,14 @@ def profile():
     return data[0]
 def roster():
     _,uid=actor('Coach')
-    return query('''SELECT a.athlete_id,a.name,u.id AS upload_id,u.filename,u.uploaded_at,u.snapshot,u.ai_status,COALESCE(t.names,'') AS teams
+    result=query('''SELECT a.athlete_id,a.name,u.id AS upload_id,u.filename,u.uploaded_at,u.snapshot,u.ai_status,COALESCE(t.names,'') AS teams
     FROM coach_athlete_mapping m JOIN athletes a ON a.athlete_id=m.athlete_id
     LEFT JOIN LATERAL(SELECT id,filename,uploaded_at,snapshot,ai_status FROM qutwin_processed_uploads WHERE athlete_id=a.athlete_id::text ORDER BY uploaded_at DESC,id DESC LIMIT 1) u ON TRUE
     LEFT JOIN LATERAL(SELECT string_agg(ct.name,', ' ORDER BY ct.name) AS names FROM qutwin_team_members tm JOIN qutwin_coach_teams ct ON ct.id=tm.team_id WHERE tm.coach_id=m.coach_id::text AND tm.athlete_id=a.athlete_id::text) t ON TRUE
     WHERE m.coach_id=%s ORDER BY a.name,a.athlete_id''',(uid,))
+    for row in result:
+        row['snapshot']=current_assessment(row.get('snapshot'))
+    return result
 def teams():
     _,uid=actor('Coach');return query('SELECT id,name,description FROM qutwin_coach_teams WHERE coach_id=%s ORDER BY id',(uid,))
 def members(team_id):

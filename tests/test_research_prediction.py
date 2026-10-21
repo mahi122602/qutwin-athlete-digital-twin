@@ -68,6 +68,7 @@ def test_research_prediction_page_discloses_limitations(monkeypatch):
     app=AppTest.from_string("import streamlit as st\nst.session_state.user_id='athlete1'\nfrom views.athlete.predictions import athlete_predictions\nathlete_predictions()")
     app.run()
     assert not app.exception
-    assert len(app.metric)==4
-    assert any('Experimental' in w.value for w in app.warning)
-    assert len(app.dataframe)==2
+    assert any('Research estimate' in caption.value for caption in app.caption)
+    assert any('Held-out fatigue MAE' in caption.value for caption in app.caption)
+    assert len(app.dataframe)==1
+    assert 'Used' in app.dataframe[0].value['Status'].tolist()

@@ -62,7 +62,7 @@ import sys,types
 for name,attrs in {
  'database.athlete_repository':{'get_athlete_profile':lambda x:{'name':'Tina'}},
  'database.connection_request_repository':{'get_unread_notification_count':lambda *x:0},
- 'database.studio_repository':{'get_studio_records':lambda x:([{'id':8,'snapshot':{}}],[])},
+ 'database.studio_repository':{'get_studio_records':lambda x:([{'id':8,'snapshot':{}}],[]),'get_studio_forecast':lambda x:None},
 }.items():
  m=types.ModuleType(name)
  for k,v in attrs.items():setattr(m,k,v)

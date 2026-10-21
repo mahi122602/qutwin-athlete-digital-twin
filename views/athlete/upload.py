@@ -70,6 +70,8 @@ def upload_garmin_data():
                        'distance':'Distance (km)','heart_rate':'Average heart rate','steps':'Steps','calories':'Calories'}
                 columns=[k for k in names if k in entry['df']]
                 st.dataframe(entry['df'][columns].rename(columns=names).head(10),hide_index=True,use_container_width=True)
+            from views.athlete.import_review import review_import
+            review_import(entry,prefix+entry['digest']+'_review_',saved=saved)
             if outcomes.get(entry['digest'],{}).get('status')=='error':
                 st.error('This file could not be saved. Please try again. Your earlier uploads are safe.')
         pending=[e for e in entries if outcomes.get(e['digest'],{}).get('status') not in ('saved','already_saved')]

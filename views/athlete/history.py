@@ -5,12 +5,15 @@ import streamlit as st
 from database.upload_history_repository import get_upload_history
 from ui.workflow_errors import show_workflow_error
 from ui.studio_shell import chapter, style_chart, score_ribbon
+from ui.performance_story import journal_data, render_performance_story
+from services.activity_explorer import attach_dates, available_measures
 
 COLUMNS={'_uploaded_at':'Saved on','filename':'Activity file','events':'Upcoming events','timestamp':'Activity date','prediction_basis':'Assessment basis','fatigue_score':'Fatigue','readiness_score':'Readiness','injury_risk':'Injury category','recommendation':'AI draft','coach_feedback':'Coach decision'}
 def format_upload_history(frame):
     data=frame.reindex(columns=COLUMNS).copy()
-    for key in ('_uploaded_at','timestamp'):
-        data[key]=pd.to_datetime(data[key],utc=True,errors='coerce',format='mixed').dt.strftime('%d %b %Y %H:%M UTC')
+    data['_uploaded_at']=pd.to_datetime(data['_uploaded_at'],utc=True,errors='coerce',format='mixed').dt.strftime('%d %b %Y %H:%M UTC')
+    dates=attach_dates(frame)
+    data['timestamp']=dates['_date_label'].where(dates['_plot_date'].notna(),'—')
     return data.rename(columns=COLUMNS).astype(object).where(data.notna().rename(columns=COLUMNS),'—')
 
 def charts(frame):
@@ -33,21 +36,18 @@ def charts(frame):
 
 def athlete_history():
     st.title('Your activity journal')
-    chapter('03 / YOUR STORY OVER TIME','Every saved upload, assessment and recommendation in one place. Your history supports future analysis when dates and measurements are usable.')
+    chapter('03 / YOUR STORY OVER TIME','Your activities, their measurements and the advice saved alongside them. Compare sessions now; add the time perspective when activity dates are known.')
     try: frame=get_upload_history(str(st.session_state.user_id))
     except Exception as exc:show_workflow_error(exc,'History');return
     if frame.empty:st.info('Your journal starts with your first saved activity.');return
+    story=journal_data(frame)
     a,b,c=st.columns(3)
     a.metric('Saved uploads',len(frame))
-    dated=pd.to_datetime(frame.get('timestamp',pd.Series(index=frame.index,dtype=object)),errors='coerce',utc=True,format='mixed')
-    b.metric('Activities with dates',int(dated.notna().sum()))
-    c.metric('Dates to add',int(dated.isna().sum()))
+    b.metric('Measurements to explore',len(available_measures(story.observations)))
+    c.metric('Activity dates known',f"{int(story.observations['_plot_date'].notna().sum())} / {len(frame)}")
     trend,archive,summary=st.tabs(['Performance story','All records & advice','Latest summary'])
     with trend:
-        st.caption('Only recorded activity dates are plotted. Upload dates are not substituted. Different model versions and input tiers are shown separately; these are research estimates, not measured performance.')
-        if dated.notna().any():
-            for figure in charts(frame):st.plotly_chart(figure,use_container_width=True)
-        else:st.info('Your files are saved. Add their actual activity dates on Upload Data to enable a timeline.')
+        render_performance_story(frame,story)
     with archive:
         query=st.text_input('Find an activity',placeholder='Search by filename or event')
         data=frame

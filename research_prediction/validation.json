@@ -1,8 +1,8 @@
 {
-  "version": "adaptive-v2",
+  "version": "adaptive-v3",
   "sklearn_version": "1.6.1",
   "catboost_version": "1.2.8",
-  "training_data_sha256": "2a62fe72956c5c858c51c69e1ecb3db36fe504fdb7d7a835439d0ec5d6a80ce6",
+  "training_data_sha256": "ca250903c7e2c100b8dfb2c6c1069f37471f16dbae85a864def82fbb7d548ee9",
   "rows": 999,
   "athletes": 333,
   "development_athletes": 266,
@@ -25,18 +25,18 @@
       ],
       "selected_models": {
         "fatigue": "catboost",
-        "risk": "catboost"
+        "risk": "linear"
       },
       "development_group_cv": {
         "fatigue": {
-          "linear": 4.749096507538405,
-          "forest": 4.910987018322348,
-          "catboost": 4.678850827334913
+          "linear": 4.773117401458402,
+          "forest": 4.9043542895152,
+          "catboost": 4.690887533115405
         },
         "risk": {
-          "linear": 0.46829546382874027,
-          "forest": 0.459088666342673,
-          "catboost": 0.4751293401543157
+          "linear": 0.4779810967176945,
+          "forest": 0.4623289607885798,
+          "catboost": 0.4636774571089015
         }
       },
       "metrics": {
@@ -44,8 +44,8 @@
         "fatigue_rmse": 5.180824717356432,
         "fatigue_r2": 0.7701551707780264,
         "mean_baseline_mae": 9.038847117794486,
-        "risk_balanced_accuracy": 0.39208664607836696,
-        "risk_weighted_f1": 0.42108452340188396,
+        "risk_balanced_accuracy": 0.4060658825590819,
+        "risk_weighted_f1": 0.43152515792989893,
         "absolute_error_90th_percentile": 7.692159471055582
       },
       "ranges": {
@@ -74,13 +74,16 @@
           1.0
         ]
       },
+      "event_only_development_mae": 9.500403243147037,
+      "enabled": true,
+      "selection_note": "New partial tiers require at least 1% lower grouped development MAE than the event-only baseline; holdout results do not select tiers.",
       "temporal_diagnostic": {
         "fatigue_mae": 9.843813264538174,
         "fatigue_rmse": 10.052466010927606,
         "fatigue_r2": 0.0012605221649406584,
         "mean_baseline_mae": 11.117347076806535,
-        "risk_balanced_accuracy": 0.3802812054594303,
-        "risk_weighted_f1": 0.35518499818626403,
+        "risk_balanced_accuracy": 0.38923593253171257,
+        "risk_weighted_f1": 0.39298625964166967,
         "absolute_error_90th_percentile": 11.94665850416133
       }
     },
@@ -97,14 +100,14 @@
       },
       "development_group_cv": {
         "fatigue": {
-          "linear": 5.344072194292562,
-          "forest": 5.4366114327205315,
-          "catboost": 5.34945926429593
+          "linear": 5.367641714216838,
+          "forest": 5.576222044085696,
+          "catboost": 5.441354803160398
         },
         "risk": {
-          "linear": 0.4675766719701693,
-          "forest": 0.4620345904857206,
-          "catboost": 0.4537620771784708
+          "linear": 0.4701993361519798,
+          "forest": 0.4547828406925472,
+          "catboost": 0.44303131446358873
         }
       },
       "metrics": {
@@ -134,6 +137,9 @@
           1.0
         ]
       },
+      "event_only_development_mae": 9.500403243147037,
+      "enabled": true,
+      "selection_note": "New partial tiers require at least 1% lower grouped development MAE than the event-only baseline; holdout results do not select tiers.",
       "temporal_diagnostic": {
         "fatigue_mae": 9.814562738930677,
         "fatigue_rmse": 10.677346023525969,
@@ -152,18 +158,18 @@
       ],
       "selected_models": {
         "fatigue": "catboost",
-        "risk": "catboost"
+        "risk": "linear"
       },
       "development_group_cv": {
         "fatigue": {
-          "linear": 5.776460788476803,
-          "forest": 5.687351288841434,
-          "catboost": 5.650190053392746
+          "linear": 5.801899934501424,
+          "forest": 5.723968969595323,
+          "catboost": 5.669839698132656
         },
         "risk": {
-          "linear": 0.47155797105837655,
-          "forest": 0.4653227416251518,
-          "catboost": 0.48330307924377314
+          "linear": 0.47101672772158115,
+          "forest": 0.43759546500256263,
+          "catboost": 0.4434546204487018
         }
       },
       "metrics": {
@@ -171,8 +177,8 @@
         "fatigue_rmse": 6.244125446844746,
         "fatigue_r2": 0.6661278613517396,
         "mean_baseline_mae": 9.038847117794486,
-        "risk_balanced_accuracy": 0.39836717261318083,
-        "risk_weighted_f1": 0.40123402425567406,
+        "risk_balanced_accuracy": 0.40019055128457853,
+        "risk_weighted_f1": 0.41403563645801106,
         "absolute_error_90th_percentile": 9.780057732170789
       },
       "ranges": {
@@ -189,14 +195,176 @@
           1.0
         ]
       },
+      "event_only_development_mae": 9.500403243147037,
+      "enabled": true,
+      "selection_note": "New partial tiers require at least 1% lower grouped development MAE than the event-only baseline; holdout results do not select tiers.",
       "temporal_diagnostic": {
         "fatigue_mae": 9.931678647562988,
         "fatigue_rmse": 10.983096412640835,
         "fatigue_r2": -0.19222049157826082,
         "mean_baseline_mae": 11.117347076806535,
-        "risk_balanced_accuracy": 0.38366362961767225,
-        "risk_weighted_f1": 0.35530400827656927,
+        "risk_balanced_accuracy": 0.38006034054491694,
+        "risk_weighted_f1": 0.38018790966767846,
         "absolute_error_90th_percentile": 15.767003899970923
+      }
+    },
+    "load_sleep": {
+      "features": [
+        "training_load",
+        "sleep_hours"
+      ],
+      "selected_models": {
+        "fatigue": "linear",
+        "risk": "linear"
+      },
+      "development_group_cv": {
+        "fatigue": {
+          "linear": 6.44879288467465,
+          "forest": 6.611232094190622,
+          "catboost": 6.496478660807345
+        },
+        "risk": {
+          "linear": 0.45799426669618026,
+          "forest": 0.44884506752849934,
+          "catboost": 0.4446998197745298
+        }
+      },
+      "metrics": {
+        "fatigue_mae": 6.1394980022120755,
+        "fatigue_rmse": 7.748432735736056,
+        "fatigue_r2": 0.4858797922489977,
+        "mean_baseline_mae": 9.038847117794486,
+        "risk_balanced_accuracy": 0.3821593622007578,
+        "risk_weighted_f1": 0.39719085730766457,
+        "absolute_error_90th_percentile": 12.632805453717026
+      },
+      "ranges": {
+        "training_load": [
+          45.0,
+          87.0
+        ],
+        "sleep_hours": [
+          4.7,
+          8.4
+        ]
+      },
+      "event_only_development_mae": 9.500403243147037,
+      "enabled": true,
+      "selection_note": "New partial tiers require at least 1% lower grouped development MAE than the event-only baseline; holdout results do not select tiers.",
+      "temporal_diagnostic": {
+        "fatigue_mae": 9.777100729917077,
+        "fatigue_rmse": 11.696036287786708,
+        "fatigue_r2": -0.3520240103815542,
+        "mean_baseline_mae": 11.117347076806535,
+        "risk_balanced_accuracy": 0.38512771998583467,
+        "risk_weighted_f1": 0.38084835468736394,
+        "absolute_error_90th_percentile": 19.271896159498635
+      }
+    },
+    "load_rest": {
+      "features": [
+        "training_load",
+        "recovery_time"
+      ],
+      "selected_models": {
+        "fatigue": "linear",
+        "risk": "catboost"
+      },
+      "development_group_cv": {
+        "fatigue": {
+          "linear": 6.549717982908665,
+          "forest": 6.5984657064398,
+          "catboost": 6.577707754998369
+        },
+        "risk": {
+          "linear": 0.46069060176542803,
+          "forest": 0.4745954189992115,
+          "catboost": 0.47893003099984055
+        }
+      },
+      "metrics": {
+        "fatigue_mae": 6.219349369162823,
+        "fatigue_rmse": 7.8389435658651605,
+        "fatigue_r2": 0.47379858017738385,
+        "mean_baseline_mae": 9.038847117794486,
+        "risk_balanced_accuracy": 0.3953610618306065,
+        "risk_weighted_f1": 0.3700140841801664,
+        "absolute_error_90th_percentile": 12.486199704954544
+      },
+      "ranges": {
+        "training_load": [
+          45.0,
+          87.0
+        ],
+        "recovery_time": [
+          3.3,
+          8.6
+        ]
+      },
+      "event_only_development_mae": 9.500403243147037,
+      "enabled": true,
+      "selection_note": "New partial tiers require at least 1% lower grouped development MAE than the event-only baseline; holdout results do not select tiers.",
+      "temporal_diagnostic": {
+        "fatigue_mae": 9.932364389329454,
+        "fatigue_rmse": 11.876239624790925,
+        "fatigue_r2": -0.39400680409263655,
+        "mean_baseline_mae": 11.117347076806535,
+        "risk_balanced_accuracy": 0.35019039431582555,
+        "risk_weighted_f1": 0.3443684095192275,
+        "absolute_error_90th_percentile": 18.909288275387688
+      }
+    },
+    "sleep_rest": {
+      "features": [
+        "sleep_hours",
+        "recovery_time"
+      ],
+      "selected_models": {
+        "fatigue": "catboost",
+        "risk": "linear"
+      },
+      "development_group_cv": {
+        "fatigue": {
+          "linear": 6.837073637439064,
+          "forest": 6.78190053594716,
+          "catboost": 6.758314484005365
+        },
+        "risk": {
+          "linear": 0.47128275494372035,
+          "forest": 0.43329891784062186,
+          "catboost": 0.4587497108654455
+        }
+      },
+      "metrics": {
+        "fatigue_mae": 6.331995008690101,
+        "fatigue_rmse": 7.954005415591096,
+        "fatigue_r2": 0.4582377944088767,
+        "mean_baseline_mae": 9.038847117794486,
+        "risk_balanced_accuracy": 0.43330157478590364,
+        "risk_weighted_f1": 0.4327971275670561,
+        "absolute_error_90th_percentile": 13.339718268967836
+      },
+      "ranges": {
+        "sleep_hours": [
+          4.7,
+          8.4
+        ],
+        "recovery_time": [
+          3.3,
+          8.6
+        ]
+      },
+      "event_only_development_mae": 9.500403243147037,
+      "enabled": true,
+      "selection_note": "New partial tiers require at least 1% lower grouped development MAE than the event-only baseline; holdout results do not select tiers.",
+      "temporal_diagnostic": {
+        "fatigue_mae": 9.894022494226602,
+        "fatigue_rmse": 11.979750004151631,
+        "fatigue_r2": -0.4184123388305183,
+        "mean_baseline_mae": 11.117347076806535,
+        "risk_balanced_accuracy": 0.374531209526348,
+        "risk_weighted_f1": 0.35208782307507963,
+        "absolute_error_90th_percentile": 19.221404375297734
       }
     },
     "load_only": {
@@ -205,18 +373,18 @@
       ],
       "selected_models": {
         "fatigue": "catboost",
-        "risk": "linear"
+        "risk": "forest"
       },
       "development_group_cv": {
         "fatigue": {
-          "linear": 6.59235344238592,
-          "forest": 6.533562047126942,
-          "catboost": 6.523180438581641
+          "linear": 6.6011674179137225,
+          "forest": 6.59854407500049,
+          "catboost": 6.571474231928967
         },
         "risk": {
-          "linear": 0.4512324261910516,
-          "forest": 0.45083206242039003,
-          "catboost": 0.4481989654084492
+          "linear": 0.4561602080826104,
+          "forest": 0.4774375902310229,
+          "catboost": 0.4713685260420122
         }
       },
       "metrics": {
@@ -224,8 +392,8 @@
         "fatigue_rmse": 7.799916997070472,
         "fatigue_r2": 0.4790249774336863,
         "mean_baseline_mae": 9.038847117794486,
-        "risk_balanced_accuracy": 0.37022800446809906,
-        "risk_weighted_f1": 0.36550590136164807,
+        "risk_balanced_accuracy": 0.40595637032656545,
+        "risk_weighted_f1": 0.39392830398231166,
         "absolute_error_90th_percentile": 12.639128134506478
       },
       "ranges": {
@@ -234,13 +402,16 @@
           87.0
         ]
       },
+      "event_only_development_mae": 9.500403243147037,
+      "enabled": true,
+      "selection_note": "New partial tiers require at least 1% lower grouped development MAE than the event-only baseline; holdout results do not select tiers.",
       "temporal_diagnostic": {
         "fatigue_mae": 9.890668844298045,
         "fatigue_rmse": 11.815265120397507,
         "fatigue_r2": -0.37972944395078145,
         "mean_baseline_mae": 11.117347076806535,
-        "risk_balanced_accuracy": 0.37394369634014946,
-        "risk_weighted_f1": 0.3219882575203068,
+        "risk_balanced_accuracy": 0.3785937474581764,
+        "risk_weighted_f1": 0.39018631703788664,
         "absolute_error_90th_percentile": 19.076203135551665
       }
     }
@@ -251,8 +422,8 @@
       "fatigue_rmse": 5.180824717356432,
       "fatigue_r2": 0.7701551707780264,
       "mean_baseline_mae": 9.038847117794486,
-      "risk_balanced_accuracy": 0.39208664607836696,
-      "risk_weighted_f1": 0.42108452340188396,
+      "risk_balanced_accuracy": 0.4060658825590819,
+      "risk_weighted_f1": 0.43152515792989893,
       "absolute_error_90th_percentile": 7.692159471055582
     },
     "load_recovery": {
@@ -269,17 +440,44 @@
       "fatigue_rmse": 6.244125446844746,
       "fatigue_r2": 0.6661278613517396,
       "mean_baseline_mae": 9.038847117794486,
-      "risk_balanced_accuracy": 0.39836717261318083,
-      "risk_weighted_f1": 0.40123402425567406,
+      "risk_balanced_accuracy": 0.40019055128457853,
+      "risk_weighted_f1": 0.41403563645801106,
       "absolute_error_90th_percentile": 9.780057732170789
+    },
+    "load_sleep": {
+      "fatigue_mae": 6.1394980022120755,
+      "fatigue_rmse": 7.748432735736056,
+      "fatigue_r2": 0.4858797922489977,
+      "mean_baseline_mae": 9.038847117794486,
+      "risk_balanced_accuracy": 0.3821593622007578,
+      "risk_weighted_f1": 0.39719085730766457,
+      "absolute_error_90th_percentile": 12.632805453717026
+    },
+    "load_rest": {
+      "fatigue_mae": 6.219349369162823,
+      "fatigue_rmse": 7.8389435658651605,
+      "fatigue_r2": 0.47379858017738385,
+      "mean_baseline_mae": 9.038847117794486,
+      "risk_balanced_accuracy": 0.3953610618306065,
+      "risk_weighted_f1": 0.3700140841801664,
+      "absolute_error_90th_percentile": 12.486199704954544
+    },
+    "sleep_rest": {
+      "fatigue_mae": 6.331995008690101,
+      "fatigue_rmse": 7.954005415591096,
+      "fatigue_r2": 0.4582377944088767,
+      "mean_baseline_mae": 9.038847117794486,
+      "risk_balanced_accuracy": 0.43330157478590364,
+      "risk_weighted_f1": 0.4327971275670561,
+      "absolute_error_90th_percentile": 13.339718268967836
     },
     "load_only": {
       "fatigue_mae": 6.134884204227601,
       "fatigue_rmse": 7.799916997070472,
       "fatigue_r2": 0.4790249774336863,
       "mean_baseline_mae": 9.038847117794486,
-      "risk_balanced_accuracy": 0.37022800446809906,
-      "risk_weighted_f1": 0.36550590136164807,
+      "risk_balanced_accuracy": 0.40595637032656545,
+      "risk_weighted_f1": 0.39392830398231166,
       "absolute_error_90th_percentile": 12.639128134506478
     }
   },
@@ -320,5 +518,14 @@
   "excluded_inputs": {
     "heart_rate": "Resting vs exercise context undocumented in training.",
     "previous_injury": "Training values 4\u20139 have no supplied coding definition."
+  },
+  "environment": {
+    "python": "3.12.14",
+    "numpy": "2.2.6",
+    "pandas": "2.2.3",
+    "scipy": "1.15.3",
+    "scikit-learn": "1.6.1",
+    "joblib": "1.4.2",
+    "catboost": "1.2.8"
   }
 }

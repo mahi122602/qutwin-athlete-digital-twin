@@ -5,6 +5,8 @@ import uuid
 import pandas as pd
 from database.workflow_schema import get_connection
 from utils.performance import invalidate_reads
+from prediction.assessment_versions import (present_upload, current_assessment,
+    recommendation_assessment, assessment_token)
 
 
 def json_value(value):
@@ -24,7 +26,7 @@ def list_uploads(athlete_id):
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM qutwin_processed_uploads WHERE athlete_id=%s ORDER BY uploaded_at DESC,id DESC", (str(athlete_id),))
-            return _rows(cur)
+            return [present_upload(row) for row in _rows(cur)]
     finally:
         conn.close()
 
@@ -102,6 +104,12 @@ def claim_ai(athlete_id, upload_id):
                 OR (ai_status='failed' AND (ai_started_at IS NULL OR ai_started_at < NOW()-INTERVAL '5 minutes'))
                 OR (ai_status='generating' AND ai_started_at < NOW()-INTERVAL '2 minutes')) RETURNING *""",(token,upload_id,str(athlete_id)))
             rows=_rows(cur)
+            if rows:
+                raw=dict(rows[0]['snapshot'])
+                raw['recommendation_assessment']=current_assessment(raw)
+                cur.execute('UPDATE qutwin_processed_uploads SET snapshot=%s::jsonb WHERE id=%s AND athlete_id=%s AND ai_token=%s',
+                            (json_value(raw),upload_id,str(athlete_id),token))
+                rows[0]['snapshot']=raw['recommendation_assessment']
         conn.commit()
         return (rows[0],token) if rows else (None,None)
     except Exception:
@@ -138,10 +146,14 @@ def get_reviews(athlete_id):
     conn=get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("""SELECT r.* FROM qutwin_recommendation_reviews r
+            cur.execute("""SELECT r.*,u.snapshot FROM qutwin_recommendation_reviews r
                 JOIN qutwin_processed_uploads u ON u.id=r.upload_id WHERE u.athlete_id=%s
                 ORDER BY r.reviewed_at DESC NULLS LAST,r.id DESC""",(str(athlete_id),))
-            return _rows(cur)
+            rows=_rows(cur)
+            for row in rows:
+                raw=row.pop('snapshot')
+                row['assessment_is_current']=assessment_token(current_assessment(raw))==assessment_token(recommendation_assessment(raw))
+            return rows
     finally:
         conn.close()
 
@@ -160,6 +172,10 @@ def coach_queue(coach_id):
                 JOIN coach_athlete_mapping m ON m.athlete_id::text=u.athlete_id AND m.coach_id::text=r.coach_id
                 WHERE r.coach_id=%s ORDER BY (r.status='Pending') DESC,u.uploaded_at DESC,r.id DESC""",(str(coach_id),))
             result=_rows(cur)
+            for row in result:
+                raw=row['snapshot']
+                row['assessment_is_current']=assessment_token(current_assessment(raw))==assessment_token(recommendation_assessment(raw))
+                row['snapshot']=recommendation_assessment(raw)
         conn.commit(); return result
     except Exception:
         conn.rollback(); raise

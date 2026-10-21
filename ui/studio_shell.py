@@ -48,7 +48,8 @@ def score_ribbon(snapshot):
         except (ValueError,TypeError): value=0; valid=False
         display=f'{value:.1f} / 100' if valid else 'Not assessed'
         bar=f'<div class="qs-track"><i style="width:{value}%"></i></div>' if valid else ''
-        items.append(f'<article class="qs-score"><span>{label}</span><strong>{display}</strong>{bar}<small>{desc if valid else "More usable measurements are needed"}</small></article>')
+        missing='Outside model coverage · see assessment details' if snapshot.get('outside_training_range') else 'Add a supported set of measurements below'
+        items.append(f'<article class="qs-score"><span>{label}</span><strong>{display}</strong>{bar}<small>{desc if valid else missing}</small></article>')
     risk=str(snapshot.get('injury_risk') or 'Not assessed');risk='Not assessed' if risk.lower() in ('nan','none','') else risk;cls={'high':'high','medium':'medium','low':'low'}.get(risk.lower(),'unknown')
     items.append(f'<article class="qs-score qs-{cls}"><span>Exploratory injury category</span><strong>{escape(risk)}</strong><small>Research estimate · not an injury probability</small></article>')
     st.html('<div class="qs-scores">'+''.join(items)+'</div>')

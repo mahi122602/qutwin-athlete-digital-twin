@@ -20,7 +20,7 @@ class Cursor:
     @property
     def description(self): return self.cur.description
     def execute(self,sql,args=()):
-        sql=sql.replace('%s','?').replace('::jsonb','').replace('::text','').replace(' FOR UPDATE OF r','').replace(' FOR UPDATE','')
+        sql=sql.replace('%s','?').replace('::jsonb','').replace('::text','').replace(' FOR UPDATE OF r','').replace(' FOR SHARE OF m','').replace(' FOR UPDATE','')
         sql=sql.replace("NOW()-INTERVAL '2 minutes'","datetime('now','-2 minutes')").replace("NOW()-INTERVAL '5 minutes'","datetime('now','-5 minutes')").replace('NOW()',"datetime('now')")
         self.cur.execute(sql,args); return self
     def fetchone(self):
@@ -179,9 +179,11 @@ def test_history_charts_only_uploaded_points():
     frame=pd.DataFrame([{'_uploaded_at':pd.Timestamp('2026-09-03',tz='UTC'),'fatigue_score':40,'injury_risk':'Low','readiness_score':70,'twin_score':65,'health_index':60,'recovery_index':.7},
                         {'_uploaded_at':pd.Timestamp('2026-09-01',tz='UTC'),'fatigue_score':50,'injury_risk':'Medium'}])
     figures=charts(frame)
-    assert len(figures)==4
-    assert len(figures[0].data[0].x)==2
-    assert figures[2].data[0].type=='pie' and figures[3].data[0].type=='scatterpolar'
+    assert len(figures)==2
+    assert not figures[0].data  # Save times must not become invented activity times.
+    frame['timestamp']=['2026-09-03','2026-09-01']
+    dated=charts(frame)
+    assert len(dated[0].data[0].x)==2
     assert len(format_upload_history(frame))==2
 
 
@@ -202,13 +204,13 @@ def test_predictions_and_history_render(monkeypatch):
     monkeypatch.setattr(prediction,'get_reviews',lambda _: [{'upload_id':1,'coach_id':'coach1','status':'Rejected','comment':'Needs more data','final_text':None,'reviewed_at':'2026-09-13'}])
     app=AppTest.from_string("import streamlit as st\nst.session_state.user_id='athlete1'\nfrom views.athlete.predictions import athlete_predictions\nathlete_predictions()")
     app.run(); assert not app.exception
-    assert len(app.metric)==4
+    assert any('Prediction & recommendation' in title.value for title in app.title)
     assert any('rejected' in w.value for w in app.warning)
     frame=pd.DataFrame([dict(upload['snapshot'],_uploaded_at=pd.Timestamp('2026-09-13',tz='UTC'),filename='session.csv',source='CSV',recommendation='Generated',coach_feedback='Rejected')])
     monkeypatch.setattr(history,'get_upload_history',lambda _:frame)
     app=AppTest.from_string("import streamlit as st\nst.session_state.user_id='athlete1'\nfrom views.athlete.history import athlete_history\nathlete_history()")
     app.run(); assert not app.exception
-    assert len(app.get('plotly_chart'))==4
+    assert len(app.get('plotly_chart'))==0  # Activity time was not recorded.
     assert len(app.dataframe[0].value)==1
 
 

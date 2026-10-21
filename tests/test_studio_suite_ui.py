@@ -29,7 +29,8 @@ apply_suite_theme()
 """
     at=AppTest.from_string(code).run();assert not at.exception
     assert len(at.tabs)==3
-    assert any('actual activity dates' in x.value for x in at.info)
+    assert any('no usable numeric measurements' in x.value for x in at.info)
+    assert any(b.label=='Explore all measurements' for b in at.button)
 
 def test_deletion_requires_confirmation_and_does_not_run_on_render():
     code=BASE+"""
@@ -70,7 +71,7 @@ with patch('views.athlete.predictions.list_uploads',return_value=uploads),patch(
     assert any('Saved draft' in m.value for m in at.markdown)
     assert not at.json
     assert not at.warning
-    assert not at.expander
+    assert {e.label for e in at.expander}=={'How this assessment was calculated','Download this assessment'}
 
 def test_male_outlook_does_not_ask_for_period_dates():
     code=BASE+"""

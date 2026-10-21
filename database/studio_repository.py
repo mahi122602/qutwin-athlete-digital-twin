@@ -1,5 +1,6 @@
 """Small, athlete-scoped home read; never loads raw files or invokes AI."""
 from database.workflow_schema import get_connection
+from prediction.assessment_versions import present_upload
 
 
 def get_studio_records(athlete_id):
@@ -13,6 +14,7 @@ def get_studio_records(athlete_id):
                 ORDER BY uploaded_at DESC NULLS LAST, id DESC LIMIT 3""", (str(athlete_id),))
             names = [d[0] for d in cur.description]
             uploads = [dict(zip(names, row)) for row in cur.fetchall()]
+            uploads = [present_upload(upload) for upload in uploads]
             reviews = []
             if uploads:
                 cur.execute("""SELECT r.status, r.reviewed_at, r.coach_id, LEFT(r.comment, 1200) AS comment, LEFT(r.final_text, 1200) AS final_text
@@ -23,6 +25,8 @@ def get_studio_records(athlete_id):
                     (str(athlete_id), uploads[0]['id']))
                 names = [d[0] for d in cur.description]
                 reviews = [dict(zip(names, row)) for row in cur.fetchall()]
+                for review in reviews:
+                    review['assessment_is_current']=uploads[0].get('recommendation_is_current',True)
             return uploads, reviews
     finally:
         conn.close()

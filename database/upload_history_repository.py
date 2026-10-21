@@ -13,9 +13,13 @@ def get_upload_history(athlete_id):
     for u in uploads:
         feedback=[r for r in reviews if r['upload_id']==u['id']]
         coach='; '.join(f"{r['coach_id']}: {r['status']} — {r.get('final_text') or r.get('comment') or 'Awaiting review'}" for r in feedback)
+        draft=u.get('ai_text') or u.get('ai_error') or 'AI generation pending'
+        if not u.get('recommendation_is_current',True):
+            draft='Earlier assessment draft: '+draft
+            if coach:coach='Earlier assessment decisions: '+coach
         records.append(dict(u['snapshot'], _uploaded_at=None if u['snapshot'].get('legacy_upload_time_unknown') else u['uploaded_at'],filename=u['filename'],source=u['source'],
             rows_extracted=len(u['records']),upload_status=u['processing_status'],workflow_id=u['id'],
-            events=', '.join(u['events']),recommendation=u.get('ai_text') or u.get('ai_error') or 'AI generation pending',
+            events=', '.join(u['events']),recommendation=draft,
             coach_feedback=coach or 'Awaiting AI generation or coach assignment'))
     conn=get_connection()
     try:

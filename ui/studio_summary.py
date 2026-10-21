@@ -75,7 +75,11 @@ def build_summary(latest, reviews, forecast=None, errors=(), now=None):
     if 'reviews' in errors:
         unavailable.append('Coach recommendations could not be loaded.')
     elif latest:
-        reviews=list(reviews or [])
+        all_reviews=list(reviews or [])
+        reviews=[item for item in all_reviews if item.get('assessment_is_current',True)]
+        older_draft=not latest.get('recommendation_is_current',True)
+        if older_draft:
+            unavailable.append('Your saved recommendation and coach decisions refer to an earlier assessment. Open Prediction & recommendation for the original context.')
         rejected=[x for x in reviews if x.get('status')=='Rejected']
         revised=[x for x in reviews if x.get('status')=='Modified']
         approved=[x for x in reviews if x.get('status')=='Approved']
@@ -93,7 +97,7 @@ def build_summary(latest, reviews, forecast=None, errors=(), now=None):
                 'Approval is for this saved draft; it does not establish low medical risk or clearance.',
                 'coach','Read approved advice',excerpt(approved[0].get('final_text') or approved[0].get('comment')) or None)
         if pending or (not rejected and not revised and not approved):
-            if latest.get('has_draft'):
+            if latest.get('has_draft') and not older_draft:
                 add('Medium','Recommendation · awaiting review','AI draft needs coach review',
                     'This is an unapproved draft. Open it to read the full assessment and recommendations.',
                     'coach','Read AI draft',excerpt(latest.get('ai_excerpt')) or None)
@@ -104,7 +108,7 @@ def build_summary(latest, reviews, forecast=None, errors=(), now=None):
     elif not forecast:
         unavailable.append('Forecast: no saved run yet. Generate and save one on Forecasting.')
     else:
-        generated=timestamp(forecast.get('generated_at')); uploaded=timestamp(latest.get('uploaded_at'))
+        generated=timestamp(forecast.get('generated_at')); uploaded=timestamp(snapshot.get('assessment_saved_at') or latest.get('uploaded_at'))
         rows=data(forecast.get('forecast_payload'),list)
         if generated is None or (latest and uploaded is None):
             unavailable.append('Forecast freshness could not be verified. Open Forecasting to refresh it.')

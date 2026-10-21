@@ -41,7 +41,7 @@ def test_no_config_no_setup_fields_or_empty_coach_section(monkeypatch):
     app,calls=page(monkeypatch,configured=False)
     assert calls==[]
     assert not any('coach' in x.value.lower() for x in app.subheader)
-    assert any('temporarily unavailable' in x.value for x in app.info)
+    assert any('not configured' in x.value for x in app.info)
 
 def test_review_displayed(monkeypatch):
     app,calls=page(monkeypatch,text='Draft',reviews=[

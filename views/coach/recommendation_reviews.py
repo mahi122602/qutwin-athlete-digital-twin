@@ -15,8 +15,10 @@ def recommendation_reviews():
             with st.expander(f"{r['athlete_id']} · {r['filename']} · {r['status']} · #{r['upload_id']}",expanded=r['status']=='Pending'):
                 st.caption(f"Uploaded {r['uploaded_at']} · Events: {', '.join(r['events'])}")
                 snap=r['snapshot']
+                if not r.get('assessment_is_current',True):
+                    st.info('The athlete has a newer assessment. This draft and review retain their original assessment context.')
                 if snap.get('prediction_status') == 'research_estimate':
-                    st.warning('Experimental estimates with imputed inputs; not validated injury probabilities.')
+                    st.warning('Experimental research estimates; not validated injury probabilities.')
                     st.caption(snap.get('risk_validation_warning', ''))
                     st.caption('Model-only imputations and event support:')
                     st.write(snap.get('imputed_model_inputs', {}))

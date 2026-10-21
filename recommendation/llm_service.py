@@ -30,7 +30,7 @@ def generate_for_upload(athlete_id, upload_id):
     # Only computed measurements and event context are sent, never names, IDs,
     # file contents, coach notes, addresses, or connection credentials.
     snapshot=upload['snapshot']
-    fields=('fatigue_score','injury_risk','readiness_score','twin_score','heart_rate','sleep_hours','training_load','recovery_time','missing_inputs','event_type','timestamp','prediction_status','prediction_basis','analysis','imputed_model_inputs','event_scenarios','risk_validation_warning','model_limitations','activity_date_unknown','model_tier','used_model_inputs','load_scale_unverified','composite_basis','personal_state','weather_context','planned_event_count','event_plan_note')
+    fields=('fatigue_score','injury_risk','readiness_score','twin_score','heart_rate','sleep_hours','training_load','recovery_time','missing_inputs','event_type','timestamp','prediction_status','prediction_basis','analysis','imputed_model_inputs','event_scenarios','risk_validation_warning','model_limitations','activity_date_unknown','model_tier','used_model_inputs','load_scale_unverified','composite_basis','personal_state','weather_context','planned_event_count','event_plan_note','model_eligibility','outside_training_range','validation_metrics','event_basis','assessment_inputs','analysis_version')
     context={k:snapshot[k] for k in fields if k in snapshot}
     context['selected_events']=upload['events']
     context['record_count']=len(upload['records'])
