@@ -122,7 +122,8 @@ def athlete_profile():
     raw_photo = profile.get("profile_photo")
     if raw_photo:
         try:
-            ready_photo = prepare_portrait(bytes(raw_photo))
+            with st.spinner("Preparing your portrait… This may take longer the first time."):
+                ready_photo = prepare_portrait(bytes(raw_photo))
         except PortraitProcessingError as exc:
             _log.exception("Saved portrait processing failed")
             photo_warning = str(exc)
@@ -165,7 +166,8 @@ def athlete_profile():
                         uploaded = validate_changes(fields)["profile_photo"]
                         if uploaded is None:
                             raise ValueError("Choose a photo first.")
-                    data = prepare_portrait(uploaded)
+                    with st.spinner("Preparing your portrait… This may take longer the first time."):
+                        data = prepare_portrait(uploaded)
                     st.session_state[preview_key] = {"data": data, "nonce": nonce, "token": uuid.uuid4().hex}
                     st.session_state.pop(notice_key, None)
                 except Exception as exc:

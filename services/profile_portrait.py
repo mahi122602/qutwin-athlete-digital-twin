@@ -23,7 +23,9 @@ from PIL import Image, ImageOps, PngImagePlugin, UnidentifiedImageError
 MODEL_NAME = "u2net_human_seg"
 MODEL_URL = "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net_human_seg.onnx"
 MODEL_SHA256 = "01eb6a29a5c4d8edb30b56adad9bb3a2a0535338e480724a213e0acfd2d1c73c"
-PROCESSOR_BUILD = "qutwin-portrait-cpu-20261019-3"
+PROCESSOR_BUILD = "qutwin-portrait-cloud-20261022-4"
+_MODEL_LOCK = threading.Lock()
+_SESSION_LOCK = threading.Lock()
 _INFERENCE_LOCK = threading.Lock()
 _log = logging.getLogger(__name__)
 _META = "qutwin_portrait_v1"
@@ -57,7 +59,12 @@ def _model_verified(path):
 
 
 def ensure_model(download=False, progress=None):
-    """Reuse a verified model; setup may atomically repair a partial download."""
+    """Reuse or atomically repair the model, sharing a download across users."""
+    with _MODEL_LOCK:
+        return _ensure_model(download=download, progress=progress)
+
+
+def _ensure_model(download=False, progress=None):
     path = model_path()
     try:
         valid = _model_verified(path)
@@ -71,7 +78,8 @@ def ensure_model(download=False, progress=None):
     temporary = None
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        request = urllib.request.Request(MODEL_URL, headers={"User-Agent": "QUTwin-Profile-Setup/3"})
+        _log.info("Preparing portrait model in the server cache: %s", path)
+        request = urllib.request.Request(MODEL_URL, headers={"User-Agent": "QUTwin-Profile/4"})
         with tempfile.NamedTemporaryFile(dir=path.parent, prefix=MODEL_NAME + "-", suffix=".download", delete=False) as output:
             temporary = Path(output.name)
             checksum = hashlib.sha256()
@@ -85,13 +93,14 @@ def ensure_model(download=False, progress=None):
                     if progress:
                         progress(received, total)
         if checksum.hexdigest() != MODEL_SHA256:
-            raise PortraitProcessingError("MODEL_INVALID", "The model download was incomplete. Run setup again on a working internet connection.")
+            raise PortraitProcessingError("MODEL_INVALID", "Photo processing setup did not finish correctly. Retry once the connection is available; the app administrator can check the server logs.")
         temporary.replace(path)
+        _log.info("Portrait model downloaded and checksum verified.")
         return path
     except PortraitProcessingError:
         raise
     except OSError as exc:
-        raise PortraitProcessingError("MODEL_DOWNLOAD", "The portrait model could not be downloaded or saved. Check the setup terminal for the network or folder error, then run setup again.") from exc
+        raise PortraitProcessingError("MODEL_DOWNLOAD", "The photo processor could not finish its initial setup. Please retry. If this continues, the app administrator should check the server's internet connection and writable model-cache folder.") from exc
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
@@ -130,23 +139,32 @@ def portrait_info(data):
 
 
 @lru_cache(maxsize=1)
-def get_session():
+def _cached_session():
     try:
         import onnxruntime as ort
     except (ImportError, OSError) as exc:
         code = "RUNTIME_LOAD" if "DLL" in str(exc) or isinstance(exc, OSError) else "DEPENDENCY_MISSING"
-        raise PortraitProcessingError(code, "The photo processor is unavailable in the Python environment running this app. Run the photo repair setup and start the app with python -m streamlit run app.py. The terminal has the full error.") from exc
+        raise PortraitProcessingError(code, "The photo processor is unavailable in this app's Python environment. The app administrator should install requirements_profile.txt and restart or redeploy the app. The server logs contain the full error.") from exc
     # Use the verified ONNX model directly. The previous rembg import also loaded
     # Numba/PyMatting even when only segmentation was needed, making every upload
     # depend on additional native/JIT libraries. No face synthesis is performed.
-    path = ensure_model()
+    # A hosted app has its own filesystem. A model installed on the developer's
+    # laptop is not deployed with the Python files, and a new cloud instance can
+    # lose its local cache. Provision verified weights on first use in either case.
+    path = ensure_model(download=True)
     options = ort.SessionOptions()
     options.intra_op_num_threads = 4
     options.inter_op_num_threads = 1
     try:
         return ort.InferenceSession(str(path), sess_options=options, providers=["CPUExecutionProvider"])
     except Exception as exc:
-        raise PortraitProcessingError("MODEL_LOAD", "The portrait model could not start. Run the photo repair setup; its self-test will show the exact runtime error.") from exc
+        raise PortraitProcessingError("MODEL_LOAD", "The photo processor could not start. The app administrator should check the server logs and restart the app.") from exc
+
+
+def get_session():
+    """One CPU session per app process, including simultaneous first uploads."""
+    with _SESSION_LOCK:
+        return _cached_session()
 
 
 def _remove_background(image):
